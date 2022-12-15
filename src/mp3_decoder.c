@@ -1,7 +1,13 @@
 #include "mp3_decoder.h"
 
+/* MAD_BUF_SIZE should be a multiple of 4 >= 4096 and large enough to capture 
+   possible junk at beginning of MP3 file 
+*/
+#define MAD_BUF_SIZE (5 * 8192) 
+
+
 static PyMethodDef Decoder_methods[] = {
-    { "decode", (PyCFunction) &decode, METH_VARARGS, "Decode a block of MP3 data into PCM (little-endian interleaved)." },
+    { "read", (PyCFunction) &read, METH_VARARGS, "Read a decoded audio from the file object." },
     { NULL, NULL, 0, NULL }
 };
 
@@ -27,7 +33,7 @@ PyTypeObject DecoderType = {
     0,                             /* tp_setattro */
     0,                             /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT,            /* tp_flags */
-    "A class that provides access to the LAME MP3 encoder",  /* tp_doc */
+    "A class that provides access to the MAD decoder",  /* tp_doc */
     0,                             /* tp_traverse */
     0,                             /* tp_clear */
     0,                             /* tp_richcompare */
@@ -52,11 +58,24 @@ PyTypeObject DecoderType = {
  */
 static PyObject* Decoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
+    unsigned long int bufsize = MAD_BUF_SIZE;
+
     DecoderObject* self = (DecoderObject*) type->tp_alloc(type, 0);
     if (self != NULL)
     {
-        self->initialised = 0;
+        if (!PyArg_ParseTuple(args, "O:Decoder", &self->fobject)) {
+            PyErr_SetString(PyExc_ValueError, "File-like object must be provided in a constructor of Decoder");
+            return NULL;
+        }
+
+        /* make sure that if nothing else we can read it */
+        if (!PyObject_HasAttrString(self->fobject, "read")) {
+            PyErr_SetString(PyExc_IOError, "Object must have a read method");
+            return NULL;
+        }
+        Py_INCREF(self->fobject);
     }
+
     return (PyObject*) self;
 }
 

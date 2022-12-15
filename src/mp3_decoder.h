@@ -6,13 +6,15 @@
 
 typedef struct {
     PyObject_HEAD;
-    /* PyObject_HEAD */
-    /* The MAD decoder */
-    /*lame_global_flags* lame;*/
+    /* File-like object that will be read */
+    PyObject *fobject;
     struct mad_stream stream;
     struct mad_frame frame;
     struct mad_synth synth;
     mad_timer_t timer;
+    unsigned char *input_buffer;
+    unsigned int bufsize;
+    unsigned int framecount;
     /* Whether the decoder has been initialised */
     int initialised;
 } DecoderObject;
