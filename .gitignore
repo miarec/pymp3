@@ -1,0 +1,8 @@
+MANIFEST
+/dist
+/build
+/venv
+*.pyc
+*.so
+*.whl
+*.egg-info
