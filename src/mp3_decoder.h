@@ -11,12 +11,22 @@ typedef struct {
     struct mad_stream stream;
     struct mad_frame frame;
     struct mad_synth synth;
-    mad_timer_t timer;
+
     unsigned char *input_buffer;
-    unsigned int bufsize;
-    unsigned int framecount;
-    /* Whether the decoder has been initialised */
-    int initialised;
+    unsigned int input_buffer_size;
+
+    unsigned char *output_buffer;
+    unsigned int output_buffer_size;
+    unsigned int output_buffer_begin;
+    unsigned int output_buffer_end;
+
+    long mode;
+    long layer;
+    long bitrate;
+    long channels;
+    long samplerate;
+
+    unsigned int frame_count;
 } DecoderObject;
 
 /* Instantiates the new decoder class memory */
@@ -29,4 +39,9 @@ static void Decoder_dealloc(DecoderObject* self);
 static int Decoder_init(DecoderObject* self, PyObject* args, PyObject* kwds);
 
 /** The methods in the decoder class */
-static PyObject* decode(DecoderObject* self, PyObject* args);
+static PyObject* Decoder_read(DecoderObject* self, PyObject* args);
+static PyObject* Decoder_getChannels(DecoderObject* self, PyObject* args);
+static PyObject* Decoder_getBitRate(DecoderObject* self, PyObject* args);
+static PyObject* Decoder_getSampleRate(DecoderObject* self, PyObject* args);
+static PyObject* Decoder_getMode(DecoderObject* self, PyObject* args);
+static PyObject* Decoder_getLayer(DecoderObject* self, PyObject* args);

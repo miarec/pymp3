@@ -1,13 +1,13 @@
 #include "mp3_encoder.h"
 
 static PyMethodDef Encoder_methods[] = {
-    { "set_channels", (PyCFunction) &setChannels, METH_VARARGS, "Set the number of channels" },
-    { "set_quality", (PyCFunction) &setQuality, METH_VARARGS, "Set the encoder quality, 2 is highest; 7 is fastest." },
-    { "set_bit_rate", (PyCFunction) &setBitRate, METH_VARARGS, "Set the constant bit rate" },
-    { "set_in_sample_rate", (PyCFunction) &setInSampleRate, METH_VARARGS, "Set the input sample rate" },
-    { "encode", (PyCFunction) &encode, METH_VARARGS, "Encode a block of PCM data, little-endian interleaved." },
-    { "flush", (PyCFunction) &flush, METH_NOARGS, "Flush the last block of MP3 data" },
-    { "silence", (PyCFunction) &silence, METH_NOARGS, "Silence the stdout from LAME" },
+    { "set_channels", (PyCFunction) &Encoder_setChannels, METH_VARARGS, "Set the number of channels" },
+    { "set_quality", (PyCFunction) &Encoder_setQuality, METH_VARARGS, "Set the encoder quality, 2 is highest; 7 is fastest." },
+    { "set_bit_rate", (PyCFunction) &Encoder_setBitRate, METH_VARARGS, "Set the constant bit rate (in kbps)" },
+    { "set_in_sample_rate", (PyCFunction) &Encoder_setInSampleRate, METH_VARARGS, "Set the input sample rate" },
+    { "encode", (PyCFunction) &Encoder_encode, METH_VARARGS, "Encode a block of PCM data, little-endian interleaved." },
+    { "flush", (PyCFunction) &Encoder_flush, METH_NOARGS, "Flush the last block of MP3 data" },
+    { "silence", (PyCFunction) &Encoder_silence, METH_NOARGS, "Silence the stdout from LAME" },
     { NULL, NULL, 0, NULL }
 };
 
@@ -100,7 +100,7 @@ static int Encoder_init(EncoderObject* self, PyObject* args, PyObject* kwds)
 /**
  * Set the number of channels for the encoder
  */
-static PyObject* setChannels(EncoderObject* self, PyObject* args)
+static PyObject* Encoder_setChannels(EncoderObject* self, PyObject* args)
 {
     int channels;
 
@@ -121,7 +121,7 @@ static PyObject* setChannels(EncoderObject* self, PyObject* args)
 /**
  * Set the bitrate
  */
-static PyObject* setBitRate(EncoderObject* self, PyObject* args)
+static PyObject* Encoder_setBitRate(EncoderObject* self, PyObject* args)
 {
     int bitrate;
 
@@ -142,7 +142,7 @@ static PyObject* setBitRate(EncoderObject* self, PyObject* args)
 /**
  * Set the sample rate
  */
-static PyObject* setInSampleRate(EncoderObject* self, PyObject* args)
+static PyObject* Encoder_setInSampleRate(EncoderObject* self, PyObject* args)
 {
     int insamplerate;
 
@@ -163,7 +163,7 @@ static PyObject* setInSampleRate(EncoderObject* self, PyObject* args)
 /**
  * Set the number of channels for the encoder
  */
-static PyObject* setQuality(EncoderObject* self, PyObject* args)
+static PyObject* Encoder_setQuality(EncoderObject* self, PyObject* args)
 {
     int quality;
 
@@ -184,7 +184,7 @@ static PyObject* setQuality(EncoderObject* self, PyObject* args)
 /**
  * Encode a block of PCM data into MP3
  */
-static PyObject* encode(EncoderObject* self, PyObject* args)
+static PyObject* Encoder_encode(EncoderObject* self, PyObject* args)
 {
     short int* inputSamplesArray;
     Py_ssize_t inputSamplesLength;
@@ -298,7 +298,7 @@ static void silentOutput(const char *format, va_list ap)
     return;
 }
 
-static PyObject* silence(EncoderObject* self, PyObject* args)
+static PyObject* Encoder_silence(EncoderObject* self, PyObject* args)
 {
     if (lame_set_errorf(self->lame, &silentOutput) < 0 ||
         lame_set_debugf(self->lame, &silentOutput) < 0 ||
@@ -315,7 +315,7 @@ static PyObject* silence(EncoderObject* self, PyObject* args)
 /**
  * Finalise the the MP3 encoder
  */
-static PyObject* flush(EncoderObject* self, PyObject* args)
+static PyObject* Encoder_flush(EncoderObject* self, PyObject* args)
 {
     static const int blockSize = 8 * 1024;
     PyObject* outputArray = NULL;

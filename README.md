@@ -58,9 +58,9 @@ Sample code:
         nchannels = decoder.get_channels()
 
         wav_file = Wave_write(write_file)
-        wave_file.setnchannels(nchannels)
-        wave_file.setsampwidth(2)
-        wave_file.setframerate(sample_rate)
+        wav_file.setnchannels(nchannels)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(sample_rate)
 
         while True:
             pcm_data = decoder.read(4000)
@@ -68,7 +68,7 @@ Sample code:
             if not pcm_data:
                 break
             else:
-                write_file.write(pcm_data)
+                wav_file.writeframes(pcm_data)
 
 
 

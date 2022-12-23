@@ -22,10 +22,10 @@ static void Encoder_dealloc(EncoderObject* self);
 static int Encoder_init(EncoderObject* self, PyObject* args, PyObject* kwds);
 
 /** The methods in the Encoder class */
-static PyObject* setChannels(EncoderObject* self, PyObject* args);
-static PyObject* setQuality(EncoderObject* self, PyObject* args);
-static PyObject* setBitRate(EncoderObject* self, PyObject* args);
-static PyObject* setInSampleRate(EncoderObject* self, PyObject* args);
-static PyObject* encode(EncoderObject* self, PyObject* args);
-static PyObject* flush(EncoderObject* self, PyObject* args);
-static PyObject* silence(EncoderObject* self, PyObject* args);
+static PyObject* Encoder_setChannels(EncoderObject* self, PyObject* args);
+static PyObject* Encoder_setQuality(EncoderObject* self, PyObject* args);
+static PyObject* Encoder_setBitRate(EncoderObject* self, PyObject* args);
+static PyObject* Encoder_setInSampleRate(EncoderObject* self, PyObject* args);
+static PyObject* Encoder_encode(EncoderObject* self, PyObject* args);
+static PyObject* Encoder_flush(EncoderObject* self, PyObject* args);
+static PyObject* Encoder_silence(EncoderObject* self, PyObject* args);
