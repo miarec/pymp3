@@ -94,6 +94,13 @@ static PyObject* Decoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         self->input_buffer = malloc(self->input_buffer_size);
 
         self->frame_count = 0;
+
+        /* explicitly call read() to read the first frame with MPEG info (channels, samplerate, etc.) */
+        PyObject * res = Decoder_read(self, NULL);
+        if (res != NULL)
+        {
+            Py_DECREF(res);  // release memory
+        }
     }
 
     return (PyObject*) self;
@@ -182,28 +189,31 @@ static PyObject* Decoder_read(DecoderObject* self, PyObject* args)
     int unrecoverable_error = 0;
     char errmsg[ERROR_MSG_SIZE];
 
-    if (!PyArg_ParseTuple(args, "|i", &remaining_read_size))
+    if (args != NULL && !PyArg_ParseTuple(args, "|i", &remaining_read_size))
     {
         PyErr_SetString(PyExc_ValueError, "A size argument is required to read() method");
         return NULL;
     }
+
     if (remaining_read_size < 0)
     {
         PyErr_SetString(PyExc_ValueError, "A size argument cannot be negative");
         return NULL;
     }
-
-    out_buffer = result_buffer = malloc(remaining_read_size);
-    if (result_buffer == NULL) {
-        PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for output buffer");
-        return NULL;
+    else if (remaining_read_size > 0)
+    {
+        out_buffer = result_buffer = malloc(remaining_read_size);
+        if (result_buffer == NULL) {
+            PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for output buffer");
+            return NULL;
+        }
     }
 
     /* Allow user to call read(0) to read the first frame and initialize MPEG info (channels, samplerate, etc.) */
     while(remaining_read_size > 0 || self->frame_count == 0)
     {
         /* If we have already available uncompressed data, copy them into the buffer */
-        int available = self->output_buffer_end - self->output_buffer_begin;
+        int available = remaining_read_size > 0 ? self->output_buffer_end - self->output_buffer_begin : 0;
         if(available > 0)
         {
             int size = (available > remaining_read_size) ? remaining_read_size : available;
@@ -279,7 +289,7 @@ static PyObject* Decoder_read(DecoderObject* self, PyObject* args)
         /* Fill in the buffer.  If an error occurs, make like a tree */
         o_read = PyObject_CallMethod(self->fobject, "read", "i", readsize);
         if (o_read == NULL) {
-            PyErr_SetString(PyExc_ValueError, "Failure in reading MP3 data from object");
+            PyErr_SetString(PyExc_ValueError, "Failure in reading MP3 data from object (Is the file opened in binary mode?)");
             free(result_buffer);
             return NULL;
         }
@@ -421,8 +431,12 @@ static PyObject* Decoder_read(DecoderObject* self, PyObject* args)
 
     } // while (requested_read_len > 0)
 
-
-    if (total_read_bytes > 0)
+    if (result_buffer == NULL)
+    {
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+    else if (total_read_bytes > 0)
     {
         PyObject *pybuf = PyByteArray_FromStringAndSize((const char *)result_buffer, total_read_bytes);
         free(result_buffer);
