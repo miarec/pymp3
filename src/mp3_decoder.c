@@ -111,11 +111,18 @@ static PyObject* Decoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         self->frame_count = 0;
 
         /* explicitly call read() to read the first frame with MPEG info (channels, samplerate, etc.) */
-        PyObject * res = Decoder_readFrames(self, NULL);
-        if (res == NULL)
-            PyErr_Clear();  // readFrames() can set error when file is not MP3 encoded
-        else
-            Py_DECREF(res);  // release memory
+        PyObject * arglist = Py_BuildValue("(i)", 0);   
+
+        // Note, Py_BuildValue() may fail due to MemoryError. In this case, we don't call read() method
+        if (arglist != NULL)
+        {
+            PyObject * read_res = Decoder_readFrames(self, arglist);
+            Py_DECREF(arglist);
+            if (read_res == NULL)
+                PyErr_Clear();  // readFrames() can set error when file is not MP3 encoded
+            else
+                Py_DECREF(read_res);  // release memory
+        }
     }
 
     return (PyObject*) self;
@@ -189,23 +196,34 @@ static int16_t madfixed_to_int16(mad_fixed_t sample) {
 }
 
 
+/* 
+Concatenate buffer to a bytestring object.
+As bytes object is immutable, it will recreate new object.
+*/
+static int concat_bytes(PyObject **bytes, char const* buffer, Py_ssize_t len)
+{
+    PyObject * newpart = PyByteArray_FromStringAndSize((const char *)buffer, len);
+    PyBytes_ConcatAndDel(bytes, newpart);
+    if (bytes == NULL)
+        return 0;   // memory error, could not allocate a new bytestring
+    else
+        return 1;
+}
+
 /**
  * Read the next block of audio (decoded on flight)
  */
 static PyObject* Decoder_readFrames(DecoderObject* self, PyObject* args)
 {
-    PyObject *exc, *val, *tb;
-    int result;
-    unsigned char *result_buffer = NULL; /* output buffer */
-    unsigned char *out_buffer = NULL;  /* output buffer */
+    // An empty bytestring as a result from this function
+    PyObject * result_bytes = Py_BuildValue("y", "");
 
-    int remaining_read_size = 0;
-    int total_read_bytes = 0;
+    int remaining_read_size = 256*1024*1024;    // 256MB maximum supported size of one read operation
 
     int unrecoverable_error = 0;
     char errmsg[ERROR_MSG_SIZE];
 
-    if (args != NULL && !PyArg_ParseTuple(args, "|i", &remaining_read_size))
+    if(!PyArg_ParseTuple(args, "|i", &remaining_read_size))
     {
         PyErr_SetString(PyExc_ValueError, "A size argument is required to read() method");
         return NULL;
@@ -216,16 +234,8 @@ static PyObject* Decoder_readFrames(DecoderObject* self, PyObject* args)
         PyErr_SetString(PyExc_ValueError, "A size argument cannot be negative");
         return NULL;
     }
-    else if (remaining_read_size > 0)
-    {
-        out_buffer = result_buffer = malloc(remaining_read_size);
-        if (result_buffer == NULL) {
-            PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for output buffer");
-            return NULL;
-        }
-    }
 
-    /* Allow user to call read(0) to read the first frame and initialize MPEG info (channels, samplerate, etc.) */
+    /* User may call read(0) to read the first frame and initialize MPEG info (channels, samplerate, etc.) */
     while(remaining_read_size > 0 || self->frame_count == 0)
     {
         /* If we have already available uncompressed data, copy them into the buffer */
@@ -233,20 +243,19 @@ static PyObject* Decoder_readFrames(DecoderObject* self, PyObject* args)
         if(available > 0)
         {
             int size = (available > remaining_read_size) ? remaining_read_size : available;
-            memcpy(out_buffer, self->output_buffer + self->output_buffer_begin, size);
-            total_read_bytes += size;
-            out_buffer += size;
+            if(!concat_bytes(&result_bytes, self->output_buffer + self->output_buffer_begin, size))
+                return NULL;
 
             self->output_buffer_begin += size;
             if (self->output_buffer_begin == self->output_buffer_end)
             {
-                /* If we are here, output_buffer is empty, so, clear all pointers. */
+                /* If we are here, then output_buffer is empty, so, reset the begin/end pointers. */
                 self->output_buffer_begin = 0;
                 self->output_buffer_end = 0;
             }
 
             remaining_read_size -= size;
-            if(remaining_read_size == 0)
+            if(remaining_read_size <= 0)
             {
                 break;   /* we read all the requested bytes, return the read data */
             }
@@ -285,9 +294,10 @@ static PyObject* Decoder_readFrames(DecoderObject* self, PyObject* args)
             remaining = self->stream.bufend - self->stream.next_frame;
             if (remaining >= self->input_buffer_size)
             {
-                remaining = 0;
-                readsize = self->input_buffer_size;
+                // Something is wrong (too much remaining data). Ignoring it
                 readstart = self->input_buffer;
+                readsize = self->input_buffer_size;
+                remaining = 0;
             }
             else {
                 memmove(self->input_buffer, self->stream.next_frame, remaining);
@@ -297,8 +307,8 @@ static PyObject* Decoder_readFrames(DecoderObject* self, PyObject* args)
         }
         else
         {
-            readsize = self->input_buffer_size;
             readstart = self->input_buffer;
+            readsize = self->input_buffer_size;
             remaining = 0;
         }
 
@@ -307,30 +317,26 @@ static PyObject* Decoder_readFrames(DecoderObject* self, PyObject* args)
         if (o_read == NULL) {
 
             // Chain the previous exception to a new exception RuntimeError
+            PyObject *exc, *val, *tb;
             PyErr_Fetch(&exc, &val, &tb);
             PyErr_SetString(PyExc_RuntimeError, "Failure in calling read() method of the file-like object");
             _PyErr_ChainExceptions(exc, val, tb);
 
-            if (result_buffer == NULL)
-                free(result_buffer);
+            Py_DECREF(result_bytes);
             return NULL;
         }
 
         PyBytes_AsStringAndSize(o_read, &o_buffer, &readsize);
         if(PyErr_Occurred())
         {
-            Py_DECREF(o_read);
-            if (result_buffer == NULL)
-            {
-                free(result_buffer);
-                result_buffer = NULL;
-            }
-
             // Chain the previous exception to a new exception RuntimeError
+            PyObject *exc, *val, *tb;
             PyErr_Fetch(&exc, &val, &tb);
             PyErr_SetString(PyExc_RuntimeError, "Failure in reading bytes from file-like object (Is it opened in binary mode?)");
             _PyErr_ChainExceptions(exc, val, tb);
 
+            Py_DECREF(o_read);
+            Py_DECREF(result_bytes);
             return NULL;
         }
 
@@ -380,6 +386,8 @@ static PyObject* Decoder_readFrames(DecoderObject* self, PyObject* args)
             * skip the faulty part and re-sync to the next frame.
             */
 
+            int result;
+
             Py_BEGIN_ALLOW_THREADS;
             result = mad_frame_decode(&self->frame, &self->stream);
             Py_END_ALLOW_THREADS;
@@ -399,7 +407,7 @@ static PyObject* Decoder_readFrames(DecoderObject* self, PyObject* args)
                     }
                     else
                     {
-                        snprintf(errmsg, ERROR_MSG_SIZE, "unrecoverable frame level error: %s", mad_stream_errorstr(&self->stream));
+                        snprintf(errmsg, ERROR_MSG_SIZE, "Unrecoverable mpeg frame level error: %s", mad_stream_errorstr(&self->stream));
                         unrecoverable_error = 1;
                     }
                     break;
@@ -422,6 +430,7 @@ static PyObject* Decoder_readFrames(DecoderObject* self, PyObject* args)
             * No errors are reported by mad_synth_frame(); */
             Py_BEGIN_ALLOW_THREADS;
             mad_synth_frame(&self->synth, &self->frame);
+            Py_END_ALLOW_THREADS;
 
             /* Synthesized samples must be converted from libmad's fixed
             * point number to the consumer format. Here we use unsigned
@@ -449,9 +458,8 @@ static PyObject* Decoder_readFrames(DecoderObject* self, PyObject* args)
                 unsigned char * new_buffer = realloc(self->output_buffer, self->output_buffer_size);
                 if (new_buffer == NULL)
                 {
-                    if (result_buffer != NULL)
-                        free(result_buffer);
                     PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for output buffer");
+                    Py_DECREF(result_bytes);
                     return NULL;
                 }
                 self->output_buffer = new_buffer;
@@ -478,34 +486,20 @@ static PyObject* Decoder_readFrames(DecoderObject* self, PyObject* args)
                 }
             }
 
-            Py_END_ALLOW_THREADS;
 
         }; //while(1)
 
-    } // while (requested_read_len > 0)
+    } // while (requested_read_len >= 0)
 
-    if (result_buffer == NULL)
+    if(unrecoverable_error)
     {
-        Py_INCREF(Py_None);
-        return Py_None;
-    }
-    else if (total_read_bytes > 0)
-    {
-        PyObject *pybuf = PyByteArray_FromStringAndSize((const char *)result_buffer, total_read_bytes);
-        free(result_buffer);
-        return pybuf;
-    }
-    else if(unrecoverable_error)
-    {
-        free(result_buffer);
+        Py_DECREF(result_bytes);
         PyErr_SetString(PyExc_RuntimeError, errmsg);
         return NULL;
     }
     else
     {
-        free(result_buffer);
-        Py_INCREF(Py_None);
-        return Py_None;
+        return result_bytes;
     }
 }
 

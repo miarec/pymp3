@@ -193,7 +193,7 @@ def test_decoder_invalid_file_format():
         assert reader.get_sample_rate() == 0
         assert reader.get_bit_rate() == 0
 
-        assert None == reader.read(512), "Should return None if not MPEG frames are detected"
+        assert b'' == reader.read(512), "Should return None if not MPEG frames are detected"
 
 
 def test_decoder_invalid_file_object_read_attr():
@@ -270,3 +270,41 @@ def test_decoder_invalid_file_open_mode():
 
         with pytest.raises(RuntimeError):
             reader.read(1152)
+
+
+def test_decoder_read_all_bytes():
+    """
+    Test reading all available bytes from MP3 file
+    """
+
+    # MP3 file:
+    #  - duration: 0.4s
+    #  - sample rate: 8000 Hz
+    #  - bitrate: 24kbps
+    #  - channels: 2 (stereo)
+    #
+    # File is generated with:
+    #   sox -n -r 8000 -c 2 silence-8KHz-stereo-0.4s.wav trim 0.0 0.4
+    #   sox -t wav -r 8000 -c 2 silence-8KHz-stereo-0.4s.wav -t mp3 -C 24.01 silence-8KHz-stereo-24kbps-0.4s.mp3
+    #
+    SAMPLE_MP3_FILE_PATH = os.path.join(os.path.dirname(__file__), 'data', 'silence-8KHz-stereo-24kbps-0.4s.mp3')
+
+    with open(SAMPLE_MP3_FILE_PATH, 'rb') as mp3_file:
+        reader = mp3.Mp3_read(mp3_file)
+
+        assert reader.is_valid()
+        assert reader.get_channels() == 2
+        assert reader.get_sample_rate() == 8000
+        assert reader.get_bit_rate() == 24
+        assert reader.get_layer() == mp3.LAYER_III
+        assert reader.get_mode() == mp3.MODE_JOINT_STEREO
+
+        decoded_data = reader.read()
+
+        # This file contains 4032 samples (0.4s)
+        # one sample is 16-bit (2 bytes) per channel, total 2 channels
+        # You can use "soxi" command to get info about a number of samples
+        assert len(decoded_data) == 4032*2*2
+
+        # The sample MP3 data is a silence only
+        assert decoded_data[:32] == b'\x00'*32
