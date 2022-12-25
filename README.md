@@ -75,10 +75,29 @@ Sample code:
 Building a binary package
 -----------------------------------------
 
+Prerequisites:
+
+- Install `wheel` package with `pip install wheel`
+
+
 To build a binary package for your platform (*.whl), run:
 
-    python -m pip wheel .
+    pip wheel .
 
+A result of this command will be *.whl file in the current directory.
+
+
+To install the built WHL file:
+------------------------------------------------------
+
+    pip install pymp3*.whl
+
+To build and install the package in development mode:
+------------------------------------------------------
+
+    pip install -e .
+
+This command will build `*.so` file (or `*.dll` on Windows) instead of *.whl.
 
 Troubleshooting a compilation of the library (C code)
 ------------------------------------------------------
@@ -88,5 +107,13 @@ when setuptools is building the package.
 
 You can call CMake directly to see the error messages if any:
 
-    cmake -S . -B build -DPYTHON_VERSION=3.8 -DPYMAD_VERSION=0.0.1
+    cmake -S . -B build -DPYTHON_VERSION=3.8 -DPYMP3_VERSION=0.0.1
     cmake --build build
+
+This command will build `pymp3.so` (or `pymp3.pyd`) file in the respective build directory
+(on Windows, it will be `./build/Release` or `./build/Debug`).
+
+On Windows, by default, Visual Studio builds a Debug configuration. 
+Add `--config=Release` to build command to choose Release configuration:
+
+    cmake --build build --config=Release

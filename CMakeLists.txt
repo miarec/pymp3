@@ -15,6 +15,11 @@ else()
     set(PYMP3_PYTHON_MODULE_EXT ".so" CACHE STRING "Extension of the C extension module file")
 endif()
 
+if(NOT CMAKE_BUILD_TYPE)
+   set(CMAKE_BUILD_TYPE "Release")
+   message(STATUS "Build type not specified: default is Release")
+endif()
+
 project(pymp3 
     LANGUAGES C
     VERSION "${PYMP3_VERSION}"
@@ -67,18 +72,13 @@ target_compile_options(${PROJECT_NAME}
         -DVERSION="${PROJECT_VERSION}"
 )
 
-# On Windows, it is required to link to the Python libraries
-if(WIN32)
-    target_link_libraries(${PROJECT_NAME} ${Python3_LIBRARIES})
-endif()
-
 
 list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # -----------------------------------------------------
 # "libmad" dependency
 # -----------------------------------------------------
-option(PYMP3_USE_SYSTEM_LIBMAD "Link with libmad, which is installed in system, rather than downloading it from github" ON)
+option(PYMP3_USE_SYSTEM_LIBMAD "Link with libmad, which is installed in system, rather than downloading it from github" OFF)
 
 if(PYMP3_USE_SYSTEM_LIBMAD)
     find_package (mad)
@@ -97,7 +97,6 @@ else()
     )
     FetchContent_MakeAvailable(mad)
 
-
     message(STATUS "mad_SOURCE_DIR=${mad_SOURCE_DIR}, mad_BINARY_DIR=${mad_BINARY_DIR}")
 
     target_link_libraries(${PROJECT_NAME} PRIVATE mad)
@@ -108,7 +107,7 @@ endif()
 # -----------------------------------------------------
 # "libmp3lame" dependency
 # -----------------------------------------------------
-option(PYMP3_USE_SYSTEM_LAME "Link with libmp3lame (lame), which is installed in system, rather than downloading it from github" ON)
+option(PYMP3_USE_SYSTEM_LAME "Link with libmp3lame (lame), which is installed in system, rather than downloading it from github" OFF)
 
 if(PYMP3_USE_SYSTEM_LAME)
     find_package (mp3lame)
@@ -125,10 +124,15 @@ else()
         GIT_REPOSITORY "${PYMP3_LAME_REPO_URL}"
         GIT_TAG "${PYMP3_LAME_REPO_TAG}"
     )
-    FetchContent_MakeAvailable(lame)
-
+    FetchContent_MakeAvailable(mp3lame)
 
     message(STATUS "mp3lame_SOURCE_DIR=${mp3lame_SOURCE_DIR}, mp3lame_BINARY_DIR=${mp3lame_BINARY_DIR}")
 
     target_link_libraries(${PROJECT_NAME} PRIVATE mp3lame)
+endif()
+
+
+# On Windows, it is required to link to the Python libraries
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PUBLIC ${Python3_LIBRARIES})
 endif()
