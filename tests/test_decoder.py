@@ -28,6 +28,7 @@ def test_decoder_stereo():
     with open(SAMPLE_MP3_FILE_PATH, 'rb') as mp3_file:
         reader = mp3.Mp3_read(mp3_file)
 
+        assert reader.is_valid()
         assert reader.get_channels() == 2
         assert reader.get_sample_rate() == 8000
         assert reader.get_bit_rate() == 24
@@ -70,6 +71,7 @@ def test_decoder_mono():
     with open(SAMPLE_MP3_FILE_PATH, 'rb') as mp3_file:
         reader = mp3.Mp3_read(mp3_file)
 
+        assert reader.is_valid()
         assert reader.get_channels() == 1
         assert reader.get_sample_rate() == 8000
         assert reader.get_bit_rate() == 32
@@ -112,6 +114,7 @@ def test_decoder_mono_16KHz():
     with open(SAMPLE_MP3_FILE_PATH, 'rb') as mp3_file:
         reader = mp3.Mp3_read(mp3_file)
 
+        assert reader.is_valid()
         assert reader.get_channels() == 1
         assert reader.get_sample_rate() == 16000
         assert reader.get_bit_rate() == 32
@@ -155,6 +158,7 @@ def test_decoder_file_like_object():
 
         reader = mp3.Mp3_read(file_like_object)
 
+        assert reader.is_valid()
         assert reader.get_channels() == 2
         assert reader.get_sample_rate() == 8000
         assert reader.get_bit_rate() == 24
@@ -184,6 +188,7 @@ def test_decoder_invalid_file_format():
     with open(SAMPLE_WAV_FILE_PATH, 'rb') as invalid_file:
         reader = mp3.Mp3_read(invalid_file)
 
+        assert not reader.is_valid()
         assert reader.get_channels() == 0
         assert reader.get_sample_rate() == 0
         assert reader.get_bit_rate() == 0
@@ -239,6 +244,7 @@ def test_decoder_partially_corrupted_file():
         fp = BytesIO(data)
         reader = mp3.Mp3_read(fp)
 
+        assert reader.is_valid()
         assert reader.get_channels() == 2
         assert reader.get_sample_rate() == 8000
         assert reader.get_bit_rate() == 24
