@@ -5,8 +5,9 @@
 
 
 static PyMethodDef Decoder_methods[] = {
-    { "read", (PyCFunction) &Decoder_read, METH_VARARGS, "Read a decoded audio from the file object." },
+    { "read_frames", (PyCFunction) &Decoder_readFrames, METH_VARARGS, "Read a decoded audio from the file object" },
     { "get_channels", (PyCFunction) &Decoder_getChannels, METH_NOARGS, "Get the number of channels" },
+    { "is_valid", (PyCFunction) &Decoder_isValid, METH_NOARGS, "Report if MP3 file is valid, i.e. at least one MPEG frame was decoded successfully" },
     { "get_mode", (PyCFunction) &Decoder_getMode, METH_NOARGS, "Get MPEG mode (MODE_STEREO, MODE_DUAL_CHANNEL, MODE_JOINT_STEREO, MODE_SINGLE_CHANNEL)" },
     { "get_layer", (PyCFunction) &Decoder_getLayer, METH_NOARGS, "Get MPEG Layer, 1 for Layer I, 2 for Layer II, 3 for Layer II" },
     { "get_bit_rate", (PyCFunction) &Decoder_getBitRate, METH_NOARGS, "Get bitrate (in kbps)" },
@@ -62,16 +63,26 @@ PyTypeObject DecoderType = {
 static PyObject* Decoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     PyObject *fobject = NULL;
+    PyObject *fread = NULL;
 
     if (!PyArg_ParseTuple(args, "O:Mp3_write", &fobject)) {
-        // The C program thus receives the actual object that was passed. The object's reference count is not increased.
         PyErr_SetString(PyExc_ValueError, "File-like object must be provided in a constructor of Mp3_read");
         return NULL;
     }
 
-    /* make sure that if nothing else we can read it */
-    if (!PyObject_HasAttrString(fobject, "read")) {
-        PyErr_SetString(PyExc_IOError, "Object must have a read method");
+    // Make sure the file-like object has callable `read` attribute
+    fread = PyObject_GetAttrString(fobject, "read");
+    if (fread == NULL)
+    {
+        PyErr_SetString(PyExc_TypeError, "File-like object must have a read method");
+        return NULL;
+    }
+
+
+    int isCallable = PyCallable_Check(fread);
+    Py_DECREF(fread);
+    if (!isCallable) {
+        PyErr_SetString(PyExc_TypeError, "read attribute of file-like object must be callable");
         return NULL;
     }
 
@@ -86,22 +97,25 @@ static PyObject* Decoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         mad_frame_init(&self->frame);
         mad_synth_init(&self->synth);
 
+        /* One frame of MPEG Layer III is always 1152 samples, where each sample is 16-bit (2 bytes) for mono and x2 for stereo */
         self->output_buffer_size = 1152*2*2;
         self->output_buffer = malloc(self->output_buffer_size);
         self->output_buffer_begin = 0;
         self->output_buffer_end = 0;
 
+        /* Input buffer for compressed frames. 2048 should be enough to keep one frame in the highest possible bit rate */
         self->input_buffer_size = 2048;
         self->input_buffer = malloc(self->input_buffer_size);
 
+        self->is_valid = 0;
         self->frame_count = 0;
 
         /* explicitly call read() to read the first frame with MPEG info (channels, samplerate, etc.) */
-        PyObject * res = Decoder_read(self, NULL);
-        if (res != NULL)
-        {
+        PyObject * res = Decoder_readFrames(self, NULL);
+        if (res == NULL)
+            PyErr_Clear();  // readFrames() can set error when file is not MP3 encoded
+        else
             Py_DECREF(res);  // release memory
-        }
     }
 
     return (PyObject*) self;
@@ -178,8 +192,9 @@ static int16_t madfixed_to_int16(mad_fixed_t sample) {
 /**
  * Read the next block of audio (decoded on flight)
  */
-static PyObject* Decoder_read(DecoderObject* self, PyObject* args)
+static PyObject* Decoder_readFrames(DecoderObject* self, PyObject* args)
 {
+    PyObject *exc, *val, *tb;
     int result;
     unsigned char *result_buffer = NULL; /* output buffer */
     unsigned char *out_buffer = NULL;  /* output buffer */
@@ -287,15 +302,37 @@ static PyObject* Decoder_read(DecoderObject* self, PyObject* args)
             remaining = 0;
         }
 
-        /* Fill in the buffer.  If an error occurs, make like a tree */
+        // Call read() method on a file-like object
         o_read = PyObject_CallMethod(self->fobject, "read", "i", readsize);
         if (o_read == NULL) {
-            PyErr_SetString(PyExc_ValueError, "Failure in reading MP3 data from object (Is the file opened in binary mode?)");
-            free(result_buffer);
+
+            // Chain the previous exception to a new exception RuntimeError
+            PyErr_Fetch(&exc, &val, &tb);
+            PyErr_SetString(PyExc_RuntimeError, "Failure in calling read() method of the file-like object");
+            _PyErr_ChainExceptions(exc, val, tb);
+
+            if (result_buffer == NULL)
+                free(result_buffer);
             return NULL;
         }
 
         PyBytes_AsStringAndSize(o_read, &o_buffer, &readsize);
+        if(PyErr_Occurred())
+        {
+            Py_DECREF(o_read);
+            if (result_buffer == NULL)
+            {
+                free(result_buffer);
+                result_buffer = NULL;
+            }
+
+            // Chain the previous exception to a new exception RuntimeError
+            PyErr_Fetch(&exc, &val, &tb);
+            PyErr_SetString(PyExc_RuntimeError, "Failure in reading bytes from file-like object (Is it opened in binary mode?)");
+            _PyErr_ChainExceptions(exc, val, tb);
+
+            return NULL;
+        }
 
         /* EOF is reached. Return whatever is read */
         if (readsize == 0) {
@@ -307,8 +344,10 @@ static PyObject* Decoder_read(DecoderObject* self, PyObject* args)
         Py_DECREF(o_read);
 
         /* Pipe the new buffer content to libmad's stream decode facility */
+        Py_BEGIN_ALLOW_THREADS;
         mad_stream_buffer(&self->stream, self->input_buffer, readsize + remaining);
         self->stream.error = MAD_ERROR_NONE;
+        Py_END_ALLOW_THREADS;
 
         while(1)
         {
@@ -370,6 +409,7 @@ static PyObject* Decoder_read(DecoderObject* self, PyObject* args)
             if (self->frame_count++ == 0)
             {
                 // Read the stream format from the first frame
+                self->is_valid = 1;
                 self->channels = MAD_NCHANNELS(&self->frame.header);
                 self->bitrate = self->frame.header.bitrate/1000;
                 self->samplerate = self->frame.header.samplerate;
@@ -392,17 +432,29 @@ static PyObject* Decoder_read(DecoderObject* self, PyObject* args)
 
             struct mad_pcm *pcm = &self->synth.pcm;
 
-            unsigned int nchannels = pcm->channels;
-            unsigned int nsamples  = pcm->length;
+            /* Get this frame's info.
+               Note, it is possible that this frame's info (like a number of channels) 
+               is different form the very first frame.
+            */
+            unsigned int frame_nchannels = pcm->channels;
+            unsigned int frame_nsamples  = pcm->length;
             mad_fixed_t const * left_ch   = pcm->samples[0];
             mad_fixed_t const * right_ch  = pcm->samples[1];
 
-            int size = nsamples * self->channels * sizeof(short);
+            int size = frame_nsamples * self->channels * sizeof(short);
             if (self->output_buffer_end + size > self->output_buffer_size)
             {
-                /* increase buffer size */
+                /* increase buffer size, if necessary */
                 self->output_buffer_size = self->output_buffer_end + size;
-                self->output_buffer = realloc(self->output_buffer, self->output_buffer_size);
+                unsigned char * new_buffer = realloc(self->output_buffer, self->output_buffer_size);
+                if (new_buffer == NULL)
+                {
+                    if (result_buffer != NULL)
+                        free(result_buffer);
+                    PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for output buffer");
+                    return NULL;
+                }
+                self->output_buffer = new_buffer;
             }
 
             int16_t	* output_ptr = (int16_t *)(self->output_buffer + self->output_buffer_end);
@@ -410,7 +462,7 @@ static PyObject* Decoder_read(DecoderObject* self, PyObject* args)
 
             //--------------- Convert mad_fixed_t samples to PCM ---------------------
             int16_t sample;
-            while (nsamples--) {
+            while (frame_nsamples--) {
                 sample = madfixed_to_int16(*left_ch++);
                 *(output_ptr++) = sample;
 
@@ -419,7 +471,7 @@ static PyObject* Decoder_read(DecoderObject* self, PyObject* args)
                 */
                 if(self->channels == 2)
                 {
-                    if (pcm->channels == 2)
+                    if (frame_nchannels == 2)
                         sample = madfixed_to_int16(*right_ch++);
 
                     *(output_ptr++) = sample;
@@ -473,6 +525,11 @@ static PyObject* Decoder_getSampleRate(DecoderObject* self, PyObject* args)
     return PyLong_FromLong(self->samplerate);
 }
 
+static PyObject* Decoder_isValid(DecoderObject* self, PyObject* args)
+{
+    return PyBool_FromLong(self->is_valid);
+}
+
 static PyObject* Decoder_getMode(DecoderObject* self, PyObject* args)
 {
     switch(self->mode) {
@@ -488,7 +545,7 @@ static PyObject* Decoder_getMode(DecoderObject* self, PyObject* args)
 
 static PyObject* Decoder_getLayer(DecoderObject* self, PyObject* args) 
 {
-    switch(self->mode) {
+    switch(self->layer) {
         case MAD_LAYER_I: return PyLong_FromLong(LAYER_I);
         case MAD_LAYER_II: return PyLong_FromLong(LAYER_II);
         case MAD_LAYER_III: return PyLong_FromLong(LAYER_III);
