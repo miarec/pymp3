@@ -6,3 +6,5 @@ MANIFEST
 *.so
 *.whl
 *.egg-info
+*.pyd
+.vscode

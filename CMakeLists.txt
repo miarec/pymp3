@@ -7,7 +7,7 @@ if(NOT PYMP3_VERSION)
     message(FATAL_ERROR "PYMP3_VERSION is not set. Pass it -DPYMP3_VERSION=1.2.3 in a command line")
 endif()
 
-set(PYMP3_PYTHON_MODULE_NAME "pymp3" CACHE STRING "Name of the C extension module file")
+set(PYMP3_PYTHON_MODULE_NAME "mp3" CACHE STRING "Name of the C extension module file")
 
 if(WIN32)
     set(PYMP3_PYTHON_MODULE_EXT ".pyd" CACHE STRING "Extension of the C extension module file")

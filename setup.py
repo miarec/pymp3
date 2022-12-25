@@ -111,14 +111,14 @@ class CMakeBuild(build_ext):
 
 
 setup(
-    name='pymp3',
+    name='mp3',
     version=PYMP3_VERSION,
     description='MP3 Encoder/Decoder based on MAD and LAME libraries.',
     author='Gennadiy Bezkorovayniy',
     author_email='gb@miarec.com',
     url='https://github.com/miarec/pymp3',
     license='GPL',
-    ext_modules=[CMakeExtension('pymp3')],
+    ext_modules=[CMakeExtension('mp3')],
     cmdclass={'build_ext': CMakeBuild},
     zip_safe=False,
 )

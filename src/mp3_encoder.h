@@ -25,7 +25,7 @@ static int Encoder_init(EncoderObject* self, PyObject* args, PyObject* kwds);
 static PyObject* Encoder_setChannels(EncoderObject* self, PyObject* args);
 static PyObject* Encoder_setQuality(EncoderObject* self, PyObject* args);
 static PyObject* Encoder_setBitRate(EncoderObject* self, PyObject* args);
+static PyObject* Encoder_setMode(EncoderObject* self, PyObject* args);
 static PyObject* Encoder_setInSampleRate(EncoderObject* self, PyObject* args);
 static PyObject* Encoder_encode(EncoderObject* self, PyObject* args);
 static PyObject* Encoder_flush(EncoderObject* self, PyObject* args);
-static PyObject* Encoder_silence(EncoderObject* self, PyObject* args);

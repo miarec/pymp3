@@ -1,20 +1,21 @@
 #include "mp3_encoder.h"
+#include "py_module.h"
 
 static PyMethodDef Encoder_methods[] = {
     { "set_channels", (PyCFunction) &Encoder_setChannels, METH_VARARGS, "Set the number of channels" },
     { "set_quality", (PyCFunction) &Encoder_setQuality, METH_VARARGS, "Set the encoder quality, 2 is highest; 7 is fastest." },
     { "set_bit_rate", (PyCFunction) &Encoder_setBitRate, METH_VARARGS, "Set the constant bit rate (in kbps)" },
-    { "set_in_sample_rate", (PyCFunction) &Encoder_setInSampleRate, METH_VARARGS, "Set the input sample rate" },
+    { "set_sample_rate", (PyCFunction) &Encoder_setInSampleRate, METH_VARARGS, "Set the input sample rate" },
+    { "set_mode", (PyCFunction) &Encoder_setMode, METH_VARARGS, "Set the MPEG mode, 0 for stereo, 1 for joint stereo, 2 for dual channel (LAME doesnt' support this!) and 3 for mono" },
     { "encode", (PyCFunction) &Encoder_encode, METH_VARARGS, "Encode a block of PCM data, little-endian interleaved." },
     { "flush", (PyCFunction) &Encoder_flush, METH_NOARGS, "Flush the last block of MP3 data" },
-    { "silence", (PyCFunction) &Encoder_silence, METH_NOARGS, "Silence the stdout from LAME" },
     { NULL, NULL, 0, NULL }
 };
 
 /** The Encoder class type */
 PyTypeObject EncoderType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "pymp3.Encoder",               /* tp_name */
+    "mp3.Mp3_write",               /* tp_name */
     sizeof(EncoderObject),         /* tp_basicsize */
     0,                             /* tp_itemsize */
     (destructor) Encoder_dealloc,  /* tp_dealloc */
@@ -33,7 +34,7 @@ PyTypeObject EncoderType = {
     0,                             /* tp_setattro */
     0,                             /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT,            /* tp_flags */
-    "A class that provides access to the LAME MP3 encoder",  /* tp_doc */
+    "MP3 encoder",                 /* tp_doc */
     0,                             /* tp_traverse */
     0,                             /* tp_clear */
     0,                             /* tp_richcompare */
@@ -52,6 +53,13 @@ PyTypeObject EncoderType = {
     0,                             /* tp_alloc */
     Encoder_new,                   /* tp_new */
 };
+
+
+static void silentOutput(const char *format, va_list ap)
+{
+    return;
+}
+
 
 /**
  * Instantiates the new Encoder class memory
@@ -73,6 +81,12 @@ static PyObject* Encoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         lame_set_quality(self->lame, 2);
         // We aren't providing a file interface, so don't output a blank frame
         lame_set_bWriteVbrTag(self->lame, 0);
+
+        // Redirect error/debug output to silent function
+        lame_set_errorf(self->lame, &silentOutput);
+        lame_set_debugf(self->lame, &silentOutput);
+        lame_set_msgf(self->lame, &silentOutput);
+
         Py_END_ALLOW_THREADS
         self->initialised = 0;
     }
@@ -182,6 +196,48 @@ static PyObject* Encoder_setQuality(EncoderObject* self, PyObject* args)
 }
 
 /**
+ * Set the MPEG mode
+ */
+static PyObject* Encoder_setMode(EncoderObject* self, PyObject* args)
+{
+    int mode;
+    MPEG_mode lame_mode;
+
+    if (!PyArg_ParseTuple(args, "i", &mode))
+    {
+        return NULL;
+    }
+
+
+    switch(mode) {
+        case MODE_SINGLE_CHANNEL: 
+            lame_mode = MONO; 
+            break;
+        case MODE_STEREO: 
+            lame_mode = STEREO;
+            break;
+        case MODE_JOINT_STEREO: 
+            lame_mode = JOINT_STEREO;
+            break;
+        case MODE_DUAL_CHANNEL: 
+            PyErr_SetString(PyExc_ValueError, "LAME doesn't supprot dual channel mode");
+            return NULL;
+        default:
+            PyErr_SetString(PyExc_RuntimeError, "Invalid MPEG mode");
+            return NULL;
+    }
+
+    if (lame_set_mode(self->lame, lame_mode) < 0)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Unable to set the MPEG mode");
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+
+/**
  * Encode a block of PCM data into MP3
  */
 static PyObject* Encoder_encode(EncoderObject* self, PyObject* args)
@@ -213,14 +269,13 @@ static PyObject* Encoder_encode(EncoderObject* self, PyObject* args)
         int ret;
 
         Py_BEGIN_ALLOW_THREADS
-        if (channels == 1)
+        if (channels == 1 && lame_get_mode(self->lame) != MONO)
         {
             /* Default is JOINT_STEREO which makes no sense for mono */
             lame_set_mode(self->lame, MONO);
         }
-        else if (lame_get_brate(self->lame) > 128)
+        else if (lame_get_mode(self->lame) == MONO)
         {
-            /* High bit rate will get better channel separation */
             lame_set_mode(self->lame, STEREO);
         }
         ret = lame_init_params(self->lame);
@@ -293,24 +348,6 @@ static PyObject* Encoder_encode(EncoderObject* self, PyObject* args)
     return outputArray;
 }
 
-static void silentOutput(const char *format, va_list ap)
-{
-    return;
-}
-
-static PyObject* Encoder_silence(EncoderObject* self, PyObject* args)
-{
-    if (lame_set_errorf(self->lame, &silentOutput) < 0 ||
-        lame_set_debugf(self->lame, &silentOutput) < 0 ||
-        lame_set_msgf(self->lame, &silentOutput) < 0)
-    {
-        PyErr_SetString(
-            PyExc_RuntimeError, "Unable to redirect output to silent function"
-        );
-        return NULL;
-    }
-    Py_RETURN_NONE;
-}
 
 /**
  * Finalise the the MP3 encoder

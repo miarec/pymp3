@@ -1,18 +1,20 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
+#include "py_module.h"
 #include "mp3_encoder.h"
 #include "mp3_decoder.h"
 
+
 /** The name of the module */
-static char module_name[] = "pymp3";
+static char module_name[] = "mp3";
 
 /** Names of the declared classes */
-static char EncoderClassName[] = "Encoder";
-static char DecoderClassName[] = "Decoder";
+static char EncoderClassName[] = "Mp3_write";
+static char DecoderClassName[] = "Mp3_read";
 
 /** The docstring description of the module */
-static char module_docstring[] = "This module provides an interface to encode/decode between PCM and MP3 data";
+PyDoc_STRVAR(module_docstring, "This module provides an interface to encode/decode between PCM and MP3 data");
 
 /** No methods in the module, only a class */
 static PyMethodDef module_methods[] = {
@@ -36,10 +38,24 @@ extern PyTypeObject DecoderType;
  *
  * \return  The created module
  */
-PyMODINIT_FUNC PyInit_pymp3(void)
+PyMODINIT_FUNC PyInit_mp3(void)
 {
+    PyObject *module, *dict;
+
     /* Create the module with no methods in it */
-    PyObject *module = PyModule_Create(&pymp3_module);
+    module = PyModule_Create(&pymp3_module);
+
+    /* Define constants */
+    dict = PyModule_GetDict(module);
+
+    PyDict_SetItemString(dict, "LAYER_I", PyLong_FromLong(LAYER_I));
+    PyDict_SetItemString(dict, "LAYER_II", PyLong_FromLong(LAYER_II));
+    PyDict_SetItemString(dict, "LAYER_III", PyLong_FromLong(LAYER_III));
+
+    PyDict_SetItemString(dict, "MODE_SINGLE_CHANNEL", PyLong_FromLong(MODE_SINGLE_CHANNEL));
+    PyDict_SetItemString(dict, "MODE_DUAL_CHANNEL", PyLong_FromLong(MODE_DUAL_CHANNEL));
+    PyDict_SetItemString(dict, "MODE_JOINT_STEREO", PyLong_FromLong(MODE_JOINT_STEREO));
+    PyDict_SetItemString(dict, "MODE_STEREO", PyLong_FromLong(MODE_STEREO));
 
     /* Initialise the class */
     if (PyType_Ready(&EncoderType) < 0)

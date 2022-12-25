@@ -1,4 +1,5 @@
 #include "mp3_decoder.h"
+#include "py_module.h"
 
 #define ERROR_MSG_SIZE 512
 
@@ -6,7 +7,7 @@
 static PyMethodDef Decoder_methods[] = {
     { "read", (PyCFunction) &Decoder_read, METH_VARARGS, "Read a decoded audio from the file object." },
     { "get_channels", (PyCFunction) &Decoder_getChannels, METH_NOARGS, "Get the number of channels" },
-    { "get_mode", (PyCFunction) &Decoder_getMode, METH_NOARGS, "Get MPEG mode, 0 for single channel, 1 for dual channel, 2 for joint stereo, 3 for normal stereo" },
+    { "get_mode", (PyCFunction) &Decoder_getMode, METH_NOARGS, "Get MPEG mode (MODE_STEREO, MODE_DUAL_CHANNEL, MODE_JOINT_STEREO, MODE_SINGLE_CHANNEL)" },
     { "get_layer", (PyCFunction) &Decoder_getLayer, METH_NOARGS, "Get MPEG Layer, 1 for Layer I, 2 for Layer II, 3 for Layer II" },
     { "get_bit_rate", (PyCFunction) &Decoder_getBitRate, METH_NOARGS, "Get bitrate (in kbps)" },
     { "get_sample_rate", (PyCFunction) &Decoder_getSampleRate, METH_NOARGS, "Set the audio sample rate" },
@@ -16,7 +17,7 @@ static PyMethodDef Decoder_methods[] = {
 /** The Decoder class type */
 PyTypeObject DecoderType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "pymp3.Decoder",               /* tp_name */
+    "mp3.Mp3_read",                /* tp_name */
     sizeof(DecoderObject),         /* tp_basicsize */
     0,                             /* tp_itemsize */
     (destructor) Decoder_dealloc,  /* tp_dealloc */
@@ -35,7 +36,7 @@ PyTypeObject DecoderType = {
     0,                             /* tp_setattro */
     0,                             /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT,            /* tp_flags */
-    "A class that provides access to the MAD decoder",  /* tp_doc */
+    "MP3 decoder",                 /* tp_doc */
     0,                             /* tp_traverse */
     0,                             /* tp_clear */
     0,                             /* tp_richcompare */
@@ -62,9 +63,9 @@ static PyObject* Decoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     PyObject *fobject = NULL;
 
-    if (!PyArg_ParseTuple(args, "O:Decoder", &fobject)) {
+    if (!PyArg_ParseTuple(args, "O:Mp3_write", &fobject)) {
         // The C program thus receives the actual object that was passed. The object's reference count is not increased.
-        PyErr_SetString(PyExc_ValueError, "File-like object must be provided in a constructor of Decoder");
+        PyErr_SetString(PyExc_ValueError, "File-like object must be provided in a constructor of Mp3_read");
         return NULL;
     }
 
@@ -474,10 +475,25 @@ static PyObject* Decoder_getSampleRate(DecoderObject* self, PyObject* args)
 
 static PyObject* Decoder_getMode(DecoderObject* self, PyObject* args)
 {
-    return PyLong_FromLong(self->mode);
+    switch(self->mode) {
+        case MAD_MODE_SINGLE_CHANNEL: return PyLong_FromLong(MODE_SINGLE_CHANNEL);
+        case MAD_MODE_STEREO: return PyLong_FromLong(MODE_STEREO);
+        case MAD_MODE_JOINT_STEREO: return PyLong_FromLong(MODE_JOINT_STEREO);
+        case MAD_MODE_DUAL_CHANNEL: return PyLong_FromLong(MODE_DUAL_CHANNEL);
+        default:
+            PyErr_SetString(PyExc_RuntimeError, "Invalid MPEG mode");
+            return NULL;
+    }
 }
 
 static PyObject* Decoder_getLayer(DecoderObject* self, PyObject* args) 
 {
-    return PyLong_FromLong(self->layer);
+    switch(self->mode) {
+        case MAD_LAYER_I: return PyLong_FromLong(LAYER_I);
+        case MAD_LAYER_II: return PyLong_FromLong(LAYER_II);
+        case MAD_LAYER_III: return PyLong_FromLong(LAYER_III);
+        default:
+            PyErr_SetString(PyExc_RuntimeError, "Invalid MPEG layer");
+            return NULL;
+    }
 }
