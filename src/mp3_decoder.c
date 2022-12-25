@@ -5,7 +5,7 @@
 
 
 static PyMethodDef Decoder_methods[] = {
-    { "read_frames", (PyCFunction) &Decoder_readFrames, METH_VARARGS, "Read a decoded audio from the file object" },
+    { "read", (PyCFunction) &Decoder_readFrames, METH_VARARGS, "Read a decoded audio from the file object" },
     { "get_channels", (PyCFunction) &Decoder_getChannels, METH_NOARGS, "Get the number of channels" },
     { "is_valid", (PyCFunction) &Decoder_isValid, METH_NOARGS, "Report if MP3 file is valid, i.e. at least one MPEG frame was decoded successfully" },
     { "get_mode", (PyCFunction) &Decoder_getMode, METH_NOARGS, "Get MPEG mode (MODE_STEREO, MODE_DUAL_CHANNEL, MODE_JOINT_STEREO, MODE_SINGLE_CHANNEL)" },

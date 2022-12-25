@@ -36,7 +36,7 @@ def test_decoder_stereo():
 
         decoded_data = b''
         while True:
-            data = reader.read_frames(100)
+            data = reader.read(100)
             if not data:
                 break
             decoded_data += data
@@ -78,7 +78,7 @@ def test_decoder_mono():
 
         decoded_data = b''
         while True:
-            data = reader.read_frames(100)
+            data = reader.read(100)
             if not data:
                 break
             decoded_data += data
@@ -120,7 +120,7 @@ def test_decoder_mono_16KHz():
 
         decoded_data = b''
         while True:
-            data = reader.read_frames(100)
+            data = reader.read(100)
             if not data:
                 break
             decoded_data += data
@@ -163,7 +163,7 @@ def test_decoder_file_like_object():
 
         decoded_data = b''
         while True:
-            data = reader.read_frames(1024)
+            data = reader.read(1024)
             if not data:
                 break
             decoded_data += data
@@ -176,7 +176,7 @@ def test_decoder_invalid_file_format():
     """
     Test opening non-mp3 file (no valid MP3 frames).
 
-    EXPECTED: decoder's read_frames() method returns None.
+    EXPECTED: decoder's read() method returns None.
     """
 
     SAMPLE_WAV_FILE_PATH = os.path.join(os.path.dirname(__file__), 'data', 'silence-8KHz-stereo-0.4s.wav')
@@ -188,7 +188,7 @@ def test_decoder_invalid_file_format():
         assert reader.get_sample_rate() == 0
         assert reader.get_bit_rate() == 0
 
-        assert None == reader.read_frames(512), "Should return None if not MPEG frames are detected"
+        assert None == reader.read(512), "Should return None if not MPEG frames are detected"
 
 
 def test_decoder_invalid_file_object_read_attr():
@@ -217,7 +217,7 @@ def test_decoder_invalid_file_object_read_attr():
     reader = mp3.Mp3_read(FileLikeObjectInvalid2())
 
     with pytest.raises(RuntimeError):
-        reader.read_frames(1152)
+        reader.read(1152)
 
 
 def test_decoder_partially_corrupted_file():
@@ -243,7 +243,7 @@ def test_decoder_partially_corrupted_file():
         assert reader.get_sample_rate() == 8000
         assert reader.get_bit_rate() == 24
 
-        decoded = reader.read_frames(1024*20)
+        decoded = reader.read(1024*20)
 
         assert len(decoded) == 10*1152
 
@@ -263,4 +263,4 @@ def test_decoder_invalid_file_open_mode():
         assert not reader.is_valid()
 
         with pytest.raises(RuntimeError):
-            reader.read_frames(1152)
+            reader.read(1152)
