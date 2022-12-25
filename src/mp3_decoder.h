@@ -5,7 +5,7 @@
 #include <mad.h>
 
 typedef struct {
-    PyObject_HEAD;
+    PyObject_HEAD
     /* File-like object that will be read */
     PyObject *fobject;
     struct mad_stream stream;
