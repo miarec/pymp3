@@ -29,7 +29,7 @@ def test_decoder_stereo():
 
         assert mp3_file.tell() == 0, "Initial file position is zero"
 
-        reader = mp3.Mp3_read(mp3_file)
+        reader = mp3.Decoder(mp3_file)
 
         assert mp3_file.tell() != 0, "File position after reading first MPEG frame"
 
@@ -74,7 +74,7 @@ def test_decoder_mono():
     SAMPLE_MP3_FILE_PATH = os.path.join(os.path.dirname(__file__), 'data', 'silence-8KHz-mono-32kbps-0.5s.mp3')
 
     with open(SAMPLE_MP3_FILE_PATH, 'rb') as mp3_file:
-        reader = mp3.Mp3_read(mp3_file)
+        reader = mp3.Decoder(mp3_file)
 
         assert reader.is_valid()
         assert reader.get_channels() == 1
@@ -117,7 +117,7 @@ def test_decoder_mono_16KHz():
     SAMPLE_MP3_FILE_PATH = os.path.join(os.path.dirname(__file__), 'data', 'silence-16KHz-mono-32kbps-0.6s.mp3')
 
     with open(SAMPLE_MP3_FILE_PATH, 'rb') as mp3_file:
-        reader = mp3.Mp3_read(mp3_file)
+        reader = mp3.Decoder(mp3_file)
 
         assert reader.is_valid()
         assert reader.get_channels() == 1
@@ -161,7 +161,7 @@ def test_decoder_file_like_object():
     with open(SAMPLE_MP3_FILE_PATH, 'rb') as mp3_file:
         file_like_object = FileLikeObject(mp3_file.read())
 
-        reader = mp3.Mp3_read(file_like_object)
+        reader = mp3.Decoder(file_like_object)
 
         assert reader.is_valid()
         assert reader.get_channels() == 2
@@ -189,7 +189,7 @@ def test_decoder_invalid_file_format():
     """
 
     invalid_file = BytesIO(b'\x00' * 8000)
-    reader = mp3.Mp3_read(invalid_file)
+    reader = mp3.Decoder(invalid_file)
 
 
     assert not reader.is_valid()
@@ -213,7 +213,7 @@ def test_decoder_invalid_file_object_read_attr():
             self.read = 'invalid'
 
     with pytest.raises(TypeError):
-        mp3.Mp3_read(FileLikeObjectInvalid1())
+        mp3.Decoder(FileLikeObjectInvalid1())
 
     class FileLikeObjectInvalid2(object):
         """`read()` method has unsupported parameters (missing nbytes argument)"""
@@ -221,9 +221,9 @@ def test_decoder_invalid_file_object_read_attr():
         def read(self):
             return self.data_io.read(n)
 
-    mp3.Mp3_read(FileLikeObjectInvalid2())
+    mp3.Decoder(FileLikeObjectInvalid2())
 
-    reader = mp3.Mp3_read(FileLikeObjectInvalid2())
+    reader = mp3.Decoder(FileLikeObjectInvalid2())
 
     with pytest.raises(RuntimeError):
         reader.read(1152)
@@ -246,7 +246,7 @@ def test_decoder_partially_corrupted_file():
         data = b'\x00\x00' + data[2:]
 
         fp = BytesIO(data)
-        reader = mp3.Mp3_read(fp)
+        reader = mp3.Decoder(fp)
 
         assert reader.is_valid()
         assert reader.get_channels() == 2
@@ -268,7 +268,7 @@ def test_decoder_invalid_file_open_mode():
     SAMPLE_MP3_FILE_PATH = os.path.join(os.path.dirname(__file__), 'data', 'silence-8KHz-stereo-24kbps-0.4s.mp3')
 
     with open(SAMPLE_MP3_FILE_PATH, 'r') as mp3_file:
-        reader = mp3.Mp3_read(mp3_file)
+        reader = mp3.Decoder(mp3_file)
 
         assert not reader.is_valid()
 

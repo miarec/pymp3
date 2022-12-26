@@ -10,8 +10,8 @@
 static char module_name[] = "mp3";
 
 /** Names of the declared classes */
-static char EncoderClassName[] = "Mp3_write";
-static char DecoderClassName[] = "Mp3_read";
+static char EncoderClassName[] = "Encoder";
+static char DecoderClassName[] = "Decoder";
 
 /** The docstring description of the module */
 PyDoc_STRVAR(module_docstring, "This module provides an interface to encode/decode between PCM and MP3 data");

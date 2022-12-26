@@ -34,7 +34,7 @@ def test_encoder_stereo():
 
     # Create MP3 encoder
     temp_fp = BytesIO()
-    writer = mp3.Mp3_write(temp_fp)
+    writer = mp3.Encoder(temp_fp)
 
     writer.set_channels(channels)
     writer.set_sample_rate(sample_rate)
@@ -99,7 +99,7 @@ def test_encoder_mono():
 
     # Create MP3 encoder
     temp_fp = BytesIO()
-    writer = mp3.Mp3_write(temp_fp)
+    writer = mp3.Encoder(temp_fp)
 
     writer.set_channels(channels)
     writer.set_sample_rate(sample_rate)

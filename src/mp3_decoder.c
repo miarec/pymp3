@@ -18,7 +18,7 @@ static PyMethodDef Decoder_methods[] = {
 /** The Decoder class type */
 PyTypeObject DecoderType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "mp3.Mp3_read",                /* tp_name */
+    "mp3.Decoder",                 /* tp_name */
     sizeof(DecoderObject),         /* tp_basicsize */
     0,                             /* tp_itemsize */
     (destructor) Decoder_dealloc,  /* tp_dealloc */
@@ -65,8 +65,8 @@ static PyObject* Decoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     PyObject *fobject = NULL;
     PyObject *fread = NULL;
 
-    if (!PyArg_ParseTuple(args, "O:Mp3_read", &fobject)) {
-        PyErr_SetString(PyExc_ValueError, "File-like object must be provided in a constructor of Mp3_read");
+    if (!PyArg_ParseTuple(args, "O:Decoder", &fobject)) {
+        PyErr_SetString(PyExc_ValueError, "File-like object must be provided in a constructor of Decoder");
         return NULL;
     }
 

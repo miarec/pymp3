@@ -21,9 +21,9 @@ Install from source code:
 
 # Usage
 
-## Mp3_read object (decoder)
+## mp3.Decoder object (MP3-to-PCM convertor)
 
-**Mp3_read** object provides an interface to MP3-to-PCM decoding capabilities. 
+**mp3.Decoder** object provides an interface to MP3-to-PCM decoding capabilities. 
 It uses a well-known [libmad](https://www.underbit.com/products/mad/) under the hood. 
 
 Example of usage (convert *.mp3 file to *.wav):
@@ -35,7 +35,7 @@ from wave import Wave_write
 
 with open('input.mp3', 'rb') as read_file, open('output.wav', 'wb') as write_file:
 
-    decoder = mp3.Mp3_read(read_file)
+    decoder = mp3.Decoder(read_file)
 
     sample_rate = decoder.get_sample_rate()
     nchannels = decoder.get_channels()
@@ -56,9 +56,9 @@ with open('input.mp3', 'rb') as read_file, open('output.wav', 'wb') as write_fil
 ```
 
 
-## Mp3_write object (encoder)
+## mp3.Encoder object (PCM-to-MP3 convertor)
 
-**Mp3_write** object provides an interface to PCM-to-MP3 encoding capabilities.
+**mp3.Encoder** object provides an interface to PCM-to-MP3 encoding capabilities.
 It uses a well-known [libmp3lame](https://lame.sourceforge.io/) under the hood. 
 
 Example of usage (convert *.wav file to *.mp3):
@@ -79,7 +79,7 @@ with open('input.wav', 'rb') as read_file, open('output.mp3', 'wb') as write_fil
     if sample_size != 2:
         raise ValueError("Only PCM 16-bit sample size is supported (input audio: %s)" % sample_size)
 
-    encoder = pymp3.Mp3_write(write_file)
+    encoder = mp3.Encoder(write_file)
     encoder.set_bit_rate(64)
     encoder.set_sample_rate(frame_rate)
     encoder.set_channels(nchannels)
@@ -100,24 +100,24 @@ with open('input.wav', 'rb') as read_file, open('output.mp3', 'wb') as write_fil
 
 ## Constants
 
-MPEG Layer version as returned by `Mp3_read.get_mode()`:
+MPEG Layer version as returned by `Decoder.get_layer()`:
 
 - `mp3.LAYER_I`
 - `mp3.LAYER_II`
 - `mp3.LAYER_III`
 
-MPEG mode as returned by `Mp3_read.get_mode()` or supplied to `Mp3_write.set_mode()`
+MPEG mode as returned by `Decoder.get_mode()` or supplied to `Encoder.set_mode()`
 
 - `mp3.MODE_SINGLE_CHANNEL`: a mono (single channel)
 - `mp3.MODE_DUAL_CHANNEL`: dual channel mode. Caution! A dual channel mode is not supported by LAME encoder, use a stereo or joint stereo instead.
 - `mp3.MODE_STEREO`: a stereo mode (recommended for high bitrates)
 - `mp3.MODE_JOINT_STEREO`: a joint stereo mode (recommended for low bitrates)
 
-## Mp3_write (encoder)
+## mp3.Encoder (PCM-to-MP3 convertor)
 
 Constructor:
 
-- `Mp3_write(fp)`: Creates an encoder object. `fp` is a file-like object that has `write()` method to write binary data.
+- `mp3.Encoder(fp)`: Creates an encoder object. `fp` is a file-like object that has `write()` method to write binary data.
 
 Class methods:
 
@@ -136,19 +136,21 @@ Before closing the file, call `flush()` method to write the last block of MP3 da
 
 
 
-## Mp3_read (decoder)
+## mp3.Decoder (MP3-to-PCM convertor)
 
 Constructor:
 
-- `Mp3_read(fp)`: Creates a decoder object. `fp` is a file-like object that has `read()` method to read binary data.
+- `mp3.Decoder(fp)`: Creates a decoder object. `fp` is a file-like object that has `read()` method to read binary data.
 
 Class methods:
 
+- `is_valid() -> bool`: Returns TRUE if at least one valid MPEG frame was found in a file
+- `read(nbytes = None: int) -> bytes`: Read mp3 file, decodes into PCM format (16-bit signed interleaved) and returns the requested number of bytes. If `nbytes` is not provided, then up to 256MB will be read from file
 - `get_channels() -> int`: Get the number of channels (1 for mono, 2 for stereo)
 - `get_bit_rate() -> int`: Get the bit rate (in kbps)
 - `get_sample_rate() -> int`: Get the sample rate in Hz
 - `get_mode() -> int`: Get the MPEG mode (one of `mp3.MODE_STEREO`,  `mp3.MODE_JOINT_STEREO`, `mp3.MODE_SINGLE_CHANNEL` or `mp3.MODE_DUAL_CHANNEL`)
-- `read(nbytes = None: int) -> bytes`: Read mp3 file, decodes into PCM format (16-bit signed interleaved) and returns the requested number of bytes
+- `get_layer() -> int`: Get the MPEG layer (one of `mp3.LAYER_I`,  `mp3.Layer_II`, `mp3.Layer_III`)
 
 
 # Building a binary package

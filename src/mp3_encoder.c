@@ -15,7 +15,7 @@ static PyMethodDef Encoder_methods[] = {
 /** The Encoder class type */
 PyTypeObject EncoderType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "mp3.Mp3_write",               /* tp_name */
+    "mp3.Encoder",                 /* tp_name */
     sizeof(EncoderObject),         /* tp_basicsize */
     0,                             /* tp_itemsize */
     (destructor) Encoder_dealloc,  /* tp_dealloc */
@@ -69,8 +69,8 @@ static PyObject* Encoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     PyObject *fobject = NULL;
     PyObject *fwrite = NULL;
 
-    if (!PyArg_ParseTuple(args, "O:Mp3_write", &fobject)) {
-        PyErr_SetString(PyExc_ValueError, "File-like object must be provided in a constructor of Mp3_write");
+    if (!PyArg_ParseTuple(args, "O:Encoder", &fobject)) {
+        PyErr_SetString(PyExc_ValueError, "File-like object must be provided in a constructor of Encoder");
         return NULL;
     }
 
