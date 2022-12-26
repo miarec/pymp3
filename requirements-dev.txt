@@ -1,1 +1,3 @@
+wheel
+setuptools-git-versioning
 pytest

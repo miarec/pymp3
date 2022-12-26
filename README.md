@@ -156,8 +156,8 @@ Class methods:
 
 Prerequisites:
 
-- Install `wheel` package with `pip install wheel`
-
+- [Recommended] Create python virtual environment with `python -v venv venv` and activate it with `source venv/bin/activate`
+- Install the packages required for development with `pip install -r requirements-dev.txt`
 
 To build a binary package for your platform (*.whl), run:
 
@@ -178,6 +178,12 @@ Optional `--verbose` parameter allows you to review the build process.
 This command will build `*.so` file (or `*.dll` on Windows) instead of *.whl.
 
 Optional `--verbose` parameter allows you to review the build process.
+
+# Unit testing
+
+To run unit tests, use the following command (assuming the `pymp3` module is installed in current python environment):
+
+    pytest tests
 
 # Troubleshooting build failures (C code)
 
