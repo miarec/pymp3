@@ -8,3 +8,4 @@ MANIFEST
 *.egg-info
 *.pyd
 .vscode
+.eggs

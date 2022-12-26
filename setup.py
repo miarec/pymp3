@@ -9,13 +9,6 @@ from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 
 
-# TODO: Use `setuptools-git-versioning` module to generate a version based on Git Tags
-PYMP3_VERSION_MAJOR = 0
-PYMP3_VERSION_MINOR = 0
-PYMP3_VERSION_PATCH = 1
-PYMP3_VERSION = '{}.{}.{}'.format(PYMP3_VERSION_MAJOR, PYMP3_VERSION_MINOR, PYMP3_VERSION_PATCH)
-
-
 # Command line flags forwarded to CMake (for debug purpose)
 cmake_cmd_args = []
 for f in sys.argv:
@@ -76,8 +69,6 @@ class CMakeBuild(build_ext):
 
                 '-DPYMP3_PYTHON_MODULE_NAME={}'.format(python_module_name),
                 '-DPYMP3_PYTHON_MODULE_EXT={}'.format(python_module_ext),
-
-                '-DPYMP3_VERSION={}'.format(PYMP3_VERSION),
             ]
 
             if platform.system() == 'Windows':
@@ -112,7 +103,6 @@ class CMakeBuild(build_ext):
 
 setup(
     name='mp3',
-    version=PYMP3_VERSION,
     description='MP3 Encoder/Decoder based on MAD and LAME libraries.',
     author='Gennadiy Bezkorovayniy',
     author_email='gb@miarec.com',
@@ -121,4 +111,8 @@ setup(
     ext_modules=[CMakeExtension('mp3')],
     cmdclass={'build_ext': CMakeBuild},
     zip_safe=False,
+    setup_requires=['setuptools-git-versioning<2'],
+    setuptools_git_versioning={
+        "enabled": True,
+    },
 )

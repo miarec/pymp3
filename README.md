@@ -135,7 +135,6 @@ Class methods:
 Before closing the file, call `flush()` method to write the last block of MP3 data to a file.
 
 
-
 ## mp3.Decoder (MP3-to-PCM convertor)
 
 Constructor:
@@ -162,9 +161,11 @@ Prerequisites:
 
 To build a binary package for your platform (*.whl), run:
 
-    pip wheel .
+    pip wheel . --verbose
 
-A result of this command will be `*.whl` file in the current directory.
+A result of this command will be `mp3*.whl` file in the current directory.
+
+Optional `--verbose` parameter allows you to review the build process.
 
 ## To install the built WHL file:
 
@@ -184,10 +185,10 @@ The library is built with CMake, which is automatically called when setuptools i
 
 You can call CMake directly to see the reported error messages:
 
-    cmake -S . -B build -DPYTHON_VERSION=3.8 -DPYMP3_VERSION=0.0.1
+    cmake -S . -B build -DPYTHON_VERSION=3.8
     cmake --build build
 
-The parameter `PYTHON_VERSION` is optional. If not provided, then Python interpeter will be searched on your machine.
+The parameter `PYTHON_VERSION` is optional. If not provided, then a default Python interpreter will be searched on your machine.
 
 This command will build `pymp3.so` (or `pymp3.pyd`) file in the respective build directory
 (on Windows, it will be `./build/Release` or `./build/Debug`).
