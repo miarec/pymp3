@@ -4,12 +4,24 @@
 #include <Python.h>
 #include <lame/lame.h>
 
+
+typedef enum encoder_state {
+  ENCODER_STATE_NON_INITIALIZED = 0,
+  ENCODER_STATE_INITIALIZED = 1,    
+  ENCODER_STATE_ERROR  = -1,        
+} encoder_state_t;
+
+
 typedef struct {
     PyObject_HEAD
+
+    /* File-like object that will be written */
+    PyObject *fobject;
+
     /* The LAME encoder */
     lame_global_flags* lame;
-    /* Whether the encoder has been initialised */
-    int initialised;
+
+    encoder_state_t initialized;
 } EncoderObject;
 
 /* Instantiates the new Encoder class memory */
@@ -27,5 +39,5 @@ static PyObject* Encoder_setQuality(EncoderObject* self, PyObject* args);
 static PyObject* Encoder_setBitRate(EncoderObject* self, PyObject* args);
 static PyObject* Encoder_setMode(EncoderObject* self, PyObject* args);
 static PyObject* Encoder_setInSampleRate(EncoderObject* self, PyObject* args);
-static PyObject* Encoder_encode(EncoderObject* self, PyObject* args);
+static PyObject* Encoder_write(EncoderObject* self, PyObject* args);
 static PyObject* Encoder_flush(EncoderObject* self, PyObject* args);

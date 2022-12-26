@@ -5,7 +5,7 @@
 
 
 static PyMethodDef Decoder_methods[] = {
-    { "read", (PyCFunction) &Decoder_readFrames, METH_VARARGS, "Read a decoded audio from the file object" },
+    { "read", (PyCFunction) &Decoder_read, METH_VARARGS, "Read a decoded audio from the file object" },
     { "get_channels", (PyCFunction) &Decoder_getChannels, METH_NOARGS, "Get the number of channels" },
     { "is_valid", (PyCFunction) &Decoder_isValid, METH_NOARGS, "Report if MP3 file is valid, i.e. at least one MPEG frame was decoded successfully" },
     { "get_mode", (PyCFunction) &Decoder_getMode, METH_NOARGS, "Get MPEG mode (MODE_STEREO, MODE_DUAL_CHANNEL, MODE_JOINT_STEREO, MODE_SINGLE_CHANNEL)" },
@@ -65,7 +65,7 @@ static PyObject* Decoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     PyObject *fobject = NULL;
     PyObject *fread = NULL;
 
-    if (!PyArg_ParseTuple(args, "O:Mp3_write", &fobject)) {
+    if (!PyArg_ParseTuple(args, "O:Mp3_read", &fobject)) {
         PyErr_SetString(PyExc_ValueError, "File-like object must be provided in a constructor of Mp3_read");
         return NULL;
     }
@@ -116,10 +116,10 @@ static PyObject* Decoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         // Note, Py_BuildValue() may fail due to MemoryError. In this case, we don't call read() method
         if (arglist != NULL)
         {
-            PyObject * read_res = Decoder_readFrames(self, arglist);
+            PyObject * read_res = Decoder_read(self, arglist);
             Py_DECREF(arglist);
             if (read_res == NULL)
-                PyErr_Clear();  // readFrames() can set error when file is not MP3 encoded
+                PyErr_Clear();  // read() can set error when file is not MP3 encoded
             else
                 Py_DECREF(read_res);  // release memory
         }
@@ -213,7 +213,7 @@ static int concat_bytes(PyObject **bytes, char const* buffer, Py_ssize_t len)
 /**
  * Read the next block of audio (decoded on flight)
  */
-static PyObject* Decoder_readFrames(DecoderObject* self, PyObject* args)
+static PyObject* Decoder_read(DecoderObject* self, PyObject* args)
 {
     // An empty bytestring as a result from this function
     PyObject * result_bytes = Py_BuildValue("y", "");

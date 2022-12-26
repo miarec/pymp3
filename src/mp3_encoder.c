@@ -3,12 +3,12 @@
 
 static PyMethodDef Encoder_methods[] = {
     { "set_channels", (PyCFunction) &Encoder_setChannels, METH_VARARGS, "Set the number of channels" },
-    { "set_quality", (PyCFunction) &Encoder_setQuality, METH_VARARGS, "Set the encoder quality, 2 is highest; 7 is fastest." },
+    { "set_quality", (PyCFunction) &Encoder_setQuality, METH_VARARGS, "Set the encoder quality, 2 is highest; 7 is fastest (default is 5)" },
     { "set_bit_rate", (PyCFunction) &Encoder_setBitRate, METH_VARARGS, "Set the constant bit rate (in kbps)" },
     { "set_sample_rate", (PyCFunction) &Encoder_setInSampleRate, METH_VARARGS, "Set the input sample rate" },
-    { "set_mode", (PyCFunction) &Encoder_setMode, METH_VARARGS, "Set the MPEG mode, 0 for stereo, 1 for joint stereo, 2 for dual channel (LAME doesnt' support this!) and 3 for mono" },
-    { "encode", (PyCFunction) &Encoder_encode, METH_VARARGS, "Encode a block of PCM data, little-endian interleaved." },
-    { "flush", (PyCFunction) &Encoder_flush, METH_NOARGS, "Flush the last block of MP3 data" },
+    { "set_mode", (PyCFunction) &Encoder_setMode, METH_VARARGS, "Set the MPEG mode (MODE_STEREO, MODE_DUAL_CHANNEL, MODE_JOINT_STEREO, MODE_SINGLE_CHANNEL). Note, DUAL_CHANNEL is not supported by LAME!" },
+    { "write", (PyCFunction) &Encoder_write, METH_VARARGS, "Encode a block of PCM data and write to file" },
+    { "flush", (PyCFunction) &Encoder_flush, METH_NOARGS, "Flush the last block of MP3 data to file" },
     { NULL, NULL, 0, NULL }
 };
 
@@ -66,19 +66,49 @@ static void silentOutput(const char *format, va_list ap)
  */
 static PyObject* Encoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
+    PyObject *fobject = NULL;
+    PyObject *fwrite = NULL;
+
+    if (!PyArg_ParseTuple(args, "O:Mp3_write", &fobject)) {
+        PyErr_SetString(PyExc_ValueError, "File-like object must be provided in a constructor of Mp3_write");
+        return NULL;
+    }
+
+    // Make sure the file-like object has callable `write` attribute
+    fwrite = PyObject_GetAttrString(fobject, "write");
+    if (fwrite == NULL)
+    {
+        PyErr_SetString(PyExc_TypeError, "File-like object must have a write method");
+        return NULL;
+    }
+
+
+    int isCallable = PyCallable_Check(fwrite);
+    Py_DECREF(fwrite);
+    if (!isCallable) {
+        PyErr_SetString(PyExc_TypeError, "write attribute of file-like object must be callable");
+        return NULL;
+    }
+
     EncoderObject* self = (EncoderObject*) type->tp_alloc(type, 0);
     if (self != NULL)
     {
-        Py_BEGIN_ALLOW_THREADS
         self->lame = lame_init();
         if (self->lame == NULL)
         {
             Py_CLEAR(self);
+            PyErr_SetString(PyExc_TypeError, "Could not initialize lame");
+            return NULL;
         }
+
+        Py_INCREF(fobject);
+        self->fobject = fobject;
+
+        // Default settings
         lame_set_num_channels(self->lame, 2);
         lame_set_in_samplerate(self->lame, 44100);
         lame_set_brate(self->lame, 128);
-        lame_set_quality(self->lame, 2);
+        lame_set_quality(self->lame, 5);
         // We aren't providing a file interface, so don't output a blank frame
         lame_set_bWriteVbrTag(self->lame, 0);
 
@@ -87,8 +117,7 @@ static PyObject* Encoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         lame_set_debugf(self->lame, &silentOutput);
         lame_set_msgf(self->lame, &silentOutput);
 
-        Py_END_ALLOW_THREADS
-        self->initialised = 0;
+        self->initialized = ENCODER_STATE_NON_INITIALIZED;
     }
     return (PyObject*) self;
 }
@@ -98,6 +127,11 @@ static PyObject* Encoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
  */
 static void Encoder_dealloc(EncoderObject* self)
 {
+    Py_DECREF(self->fobject);
+    self->fobject = NULL;
+
+    self->initialized = ENCODER_STATE_ERROR;
+
     lame_close(self->lame);
     Py_TYPE(self)->tp_free((PyObject*) self);
 }
@@ -240,13 +274,13 @@ static PyObject* Encoder_setMode(EncoderObject* self, PyObject* args)
 /**
  * Encode a block of PCM data into MP3
  */
-static PyObject* Encoder_encode(EncoderObject* self, PyObject* args)
+static PyObject* Encoder_write(EncoderObject* self, PyObject* args)
 {
     short int* inputSamplesArray;
     Py_ssize_t inputSamplesLength;
     Py_ssize_t sampleCount;
-    Py_ssize_t requiredOutputBytes;
-    PyObject *outputArray;
+    const char * outputBuffer = NULL;
+    Py_ssize_t outputBufferSize;
     int channels;
 
     if (!PyArg_ParseTuple(args, "s#", &inputSamplesArray, &inputSamplesLength))
@@ -264,7 +298,7 @@ static PyObject* Encoder_encode(EncoderObject* self, PyObject* args)
     channels = lame_get_num_channels(self->lame);
 
     /* Initialise the encoder if this is our first call */
-    if (self->initialised == 0)
+    if (self->initialized == ENCODER_STATE_NON_INITIALIZED)
     {
         int ret;
 
@@ -283,20 +317,20 @@ static PyObject* Encoder_encode(EncoderObject* self, PyObject* args)
 
         if (ret >= 0)
         {
-            self->initialised = 1;
+            self->initialized = ENCODER_STATE_INITIALIZED;
         }
         else
         {
             PyErr_SetString(PyExc_RuntimeError, "Error initialising the encoder");
-            self->initialised = -1;
+            self->initialized = ENCODER_STATE_ERROR;
             return NULL;
         }
     }
 
     /* The encoder is in an erroneous state */
-    if (self->initialised != 1)
+    if (self->initialized != ENCODER_STATE_INITIALIZED)
     {
-        PyErr_SetString(PyExc_RuntimeError, "Encoder not initialised");
+        PyErr_SetString(PyExc_RuntimeError, "Encoder not initialized");
         return NULL;
     }
     
@@ -304,48 +338,55 @@ static PyObject* Encoder_encode(EncoderObject* self, PyObject* args)
     sampleCount = inputSamplesLength / channels;
     if (inputSamplesLength % channels != 0)
     {
-        PyErr_SetString(
-            PyExc_RuntimeError, "The input data must be interleaved 16-bit PCM"
-        );
+        PyErr_SetString(PyExc_RuntimeError, "The input data must be interleaved 16-bit PCM");
         return NULL;
     }
-    requiredOutputBytes = sampleCount + (sampleCount / 4) + 7200;
-    outputArray = PyByteArray_FromStringAndSize(NULL, requiredOutputBytes);
-    if (outputArray != NULL)
-    {
-        int outputBytes;
-        Py_BEGIN_ALLOW_THREADS
-        if (channels > 1)
-        {
-            outputBytes = lame_encode_buffer_interleaved(
-                self->lame,
-                inputSamplesArray, sampleCount,
-                (unsigned char*) PyByteArray_AsString(outputArray), requiredOutputBytes
-            );
-        }
-        else
-        {
-            outputBytes = lame_encode_buffer(
-                self->lame,
-                inputSamplesArray, inputSamplesArray, sampleCount,
-                (unsigned char*) PyByteArray_AsString(outputArray), requiredOutputBytes
-            );
-        }
-        Py_END_ALLOW_THREADS
-        if (outputBytes < 0)
-        {
-            Py_CLEAR(outputArray);
-        }
-        else
-        {
-            if (PyByteArray_Resize(outputArray, outputBytes) == -1)
-            {
-                Py_CLEAR(outputArray);
-            }
-        }
+
+    /* Allocate temporary buffer to encoded data */
+    outputBufferSize = sampleCount + (sampleCount / 4) + 7200;
+    outputBuffer = malloc(outputBufferSize);
+    if (outputBuffer == NULL) {
+        PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for output buffer");
+        return NULL;
     }
 
-    return outputArray;
+    Py_ssize_t outputBytes;
+    Py_BEGIN_ALLOW_THREADS
+    if (channels > 1)
+    {
+        outputBytes = lame_encode_buffer_interleaved(
+            self->lame,
+            inputSamplesArray, sampleCount,
+            outputBuffer, outputBufferSize
+        );
+    }
+    else
+    {
+        outputBytes = lame_encode_buffer(
+            self->lame,
+            inputSamplesArray, inputSamplesArray, sampleCount,
+            outputBuffer, outputBufferSize
+        );
+    }
+    Py_END_ALLOW_THREADS
+
+    /* Call write() method on the file-like object */
+    PyObject * o_write = PyObject_CallMethod(self->fobject, "write", "y#", outputBuffer, outputBytes);
+    if (o_write == NULL) {
+
+        // Chain the previous exception to a new exception RuntimeError
+        PyObject *exc, *val, *tb;
+        PyErr_Fetch(&exc, &val, &tb);
+        PyErr_Format(PyExc_RuntimeError, "Failure in calling write() method of the file-like object (%d bytes)", outputBytes);
+        _PyErr_ChainExceptions(exc, val, tb);
+
+        free(outputBuffer);
+        return NULL;
+    }
+    Py_DECREF(o_write);
+
+    free(outputBuffer);  // release memory
+    return PyLong_FromLong(inputSamplesLength*2);   // return how many bytes are processed
 }
 
 
@@ -354,34 +395,45 @@ static PyObject* Encoder_encode(EncoderObject* self, PyObject* args)
  */
 static PyObject* Encoder_flush(EncoderObject* self, PyObject* args)
 {
-    static const int blockSize = 8 * 1024;
-    PyObject* outputArray = NULL;
-    if (self->initialised == 1)
+    if (self->initialized == ENCODER_STATE_INITIALIZED)
     {
-        int bytes = 0;
-        outputArray = PyByteArray_FromStringAndSize(NULL, blockSize);
-        if (outputArray != NULL)
-        {
-            Py_BEGIN_ALLOW_THREADS
-            bytes = lame_encode_flush(
-                self->lame,
-                (unsigned char*) PyByteArray_AsString(outputArray),
-                blockSize
-            );
-            Py_END_ALLOW_THREADS
-            if (bytes > 0)
-            {
-                if (PyByteArray_Resize(outputArray, bytes) == -1)
-                {
-                    Py_CLEAR(outputArray);
-                }
-            }
-            self->initialised = 2;            
+        Py_ssize_t outputBufferSize = 8 * 1024;
+        const char * outputBuffer = malloc(outputBufferSize);
+        if (outputBuffer == NULL) {
+            PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for output buffer");
+            return NULL;
         }
+
+        Py_ssize_t outputBytes = 0;
+
+        Py_BEGIN_ALLOW_THREADS
+        outputBytes = lame_encode_flush(self->lame, outputBuffer, outputBufferSize);
+        Py_END_ALLOW_THREADS
+
+        if (outputBytes > 0)
+        {
+            /* Call write() method on the file-like object */
+            PyObject * o_write = PyObject_CallMethod(self->fobject, "write", "y#", outputBuffer, outputBytes);
+            if (o_write == NULL) {
+
+                // Chain the previous exception to a new exception RuntimeError
+                PyObject *exc, *val, *tb;
+                PyErr_Fetch(&exc, &val, &tb);
+                PyErr_Format(PyExc_RuntimeError, "Failure in calling write() method of the file-like object (%d bytes)", outputBytes);
+                _PyErr_ChainExceptions(exc, val, tb);
+
+                free(outputBuffer);
+                return NULL;
+            }
+            Py_DECREF(o_write);
+        }
+
+        free(outputBuffer);  // release memory
+        return PyBool_FromLong(outputBytes);   // return how many bytes were flushed
     }
     else
     {
         PyErr_SetString(PyExc_RuntimeError, "Not currently encoding");
+        return NULL;
     }
-    return outputArray;
 }

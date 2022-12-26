@@ -40,7 +40,7 @@ static void Decoder_dealloc(DecoderObject* self);
 static int Decoder_init(DecoderObject* self, PyObject* args, PyObject* kwds);
 
 /** The methods in the decoder class */
-static PyObject* Decoder_readFrames(DecoderObject* self, PyObject* args);
+static PyObject* Decoder_read(DecoderObject* self, PyObject* args);
 static PyObject* Decoder_isValid(DecoderObject* self, PyObject* args);
 static PyObject* Decoder_getChannels(DecoderObject* self, PyObject* args);
 static PyObject* Decoder_getBitRate(DecoderObject* self, PyObject* args);
