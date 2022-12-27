@@ -30,7 +30,7 @@ Example of usage (convert *.mp3 file to *.wav):
 
 ```python
 
-from mp3
+import mp3
 from wave import Wave_write
 
 with open('input.mp3', 'rb') as read_file, open('output.wav', 'wb') as write_file:
