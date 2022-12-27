@@ -1,7 +1,8 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.18)
 # CMake version requirements:
 #  - 3.11+ is required for FetchContent module
 #  - 3.12+ is required for Python3 module
+#  - 3.18+ is required for Python3 module support of "Development.Module" (required for manylinux cibuildwheel)
 
 set(PYMP3_PYTHON_MODULE_NAME "mp3" CACHE STRING "Name of the C extension module file")
 
@@ -24,13 +25,8 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 message(STATUS "Building ${PROJECT_NAME} python extension version ${PROJECT_VERSION}...")
 
-if(NOT PYTHON_VERSION)
-    message(FATAL_ERROR "PYTHON_VERSION is not set. Pass it -DPYTHON_VERSION=3.8 in a command line")
-endif()
-message(STATUS "Searching for Python ${PYTHON_VERSION}...")
 find_package (Python3 
-    ${PYTHON_VERSION} EXACT
-    COMPONENTS Interpreter Development 
+    COMPONENTS Interpreter Development.Module
     REQUIRED
 )
 message(STATUS "Found Python ${Python3_VERSION} at ${Python3_EXECUTABLE} (include_dirs=${Python3_INCLUDE_DIRS})")
@@ -124,10 +120,4 @@ else()
     message(STATUS "mp3lame_SOURCE_DIR=${mp3lame_SOURCE_DIR}, mp3lame_BINARY_DIR=${mp3lame_BINARY_DIR}")
 
     target_link_libraries(${PROJECT_NAME} PRIVATE mp3lame)
-endif()
-
-
-# On Windows, it is required to link to the Python libraries
-if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PUBLIC ${Python3_LIBRARIES})
 endif()

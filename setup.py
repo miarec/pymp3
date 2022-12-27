@@ -65,7 +65,7 @@ class CMakeBuild(build_ext):
                 # Hint CMake to use the same Python executable that
                 # is launching the build, prevents possible mismatching if
                 # multiple versions of Python are installed
-                '-DPYTHON_VERSION={}'.format(python_version),
+                '-DPython3_EXECUTABLE={}'.format(sys.executable),
 
                 '-DPYMP3_PYTHON_MODULE_NAME={}'.format(python_module_name),
                 '-DPYMP3_PYTHON_MODULE_EXT={}'.format(python_module_ext),

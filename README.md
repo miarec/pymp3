@@ -191,13 +191,14 @@ The library is built with CMake, which is automatically called when setuptools i
 
 You can call CMake directly to see the reported error messages:
 
-    cmake -S . -B build -DPYTHON_VERSION=3.8
+    cmake -S . -B build
     cmake --build build
 
-The parameter `PYTHON_VERSION` is optional. If not provided, then a default Python interpreter will be searched on your machine.
+If you have multiple python interpreters available on the system, then add `-DPython3_EXECUTABLE=<path-to-python-exe>` to hint CMake to use
+the proper version. Otherwise, CMake will choose a default python interpreter.
 
 This command will build `pymp3.so` (or `pymp3.pyd`) file in the respective build directory
-(on Windows, it will be `./build/Release` or `./build/Debug`).
+(on Windows, it will be `./build/Release` or `./build/Debug`, on Linux, it will be `./build`).
 
 On Windows, by default, Visual Studio builds a Debug configuration. 
 Add `--config=Release` to build command to choose Release configuration:
@@ -209,5 +210,6 @@ If you want to use the system-installed lame/mad, then pass the following parame
 
     -DPYMP3_USE_SYSTEM_LIBMAD=ON -DPYMP3_USE_SYSTEM_LAME
 
+TODO:
 
-
+  - Allow user to define PYMP3_USE_SYSTEM_LIBMAD/LAME via environment variables, read them in setup.py and pass to cmake
