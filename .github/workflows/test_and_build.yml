@@ -34,9 +34,9 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements-dev.txt
 
-      - name: Install the package
+      - name: Build and Install the package locally
         run: |
-          pip install -e .
+          pip install -e . --verbose
 
       - name: Run tests
         run: |
