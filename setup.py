@@ -119,7 +119,7 @@ setup(
     ext_modules=[CMakeExtension('mp3')],
     cmdclass={'build_ext': CMakeBuild},
     zip_safe=False,
-    python_requires='>=3.6'
+    python_requires='>=3.6',
     setup_requires=['setuptools-git-versioning<2'],
     setuptools_git_versioning={
         "enabled": True,
