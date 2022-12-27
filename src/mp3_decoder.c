@@ -316,11 +316,15 @@ static PyObject* Decoder_read(DecoderObject* self, PyObject* args)
         o_read = PyObject_CallMethod(self->fobject, "read", "i", readsize);
         if (o_read == NULL) {
 
+# if 0 // Unfortunately, _PyErr_ChainExceptions() is not supported in PyPy interpreter
             // Chain the previous exception to a new exception RuntimeError
             PyObject *exc, *val, *tb;
             PyErr_Fetch(&exc, &val, &tb);
             PyErr_SetString(PyExc_RuntimeError, "Failure in calling read() method of the file-like object");
             _PyErr_ChainExceptions(exc, val, tb);
+# else
+            PyErr_SetString(PyExc_RuntimeError, "Failure in calling read() method of the file-like object");
+# endif
 
             Py_DECREF(result_bytes);
             return NULL;
@@ -329,11 +333,16 @@ static PyObject* Decoder_read(DecoderObject* self, PyObject* args)
         PyBytes_AsStringAndSize(o_read, &o_buffer, &readsize);
         if(PyErr_Occurred())
         {
+
+# if 0 // Unfortunately, _PyErr_ChainExceptions() is not supported in PyPy interpreter
             // Chain the previous exception to a new exception RuntimeError
             PyObject *exc, *val, *tb;
             PyErr_Fetch(&exc, &val, &tb);
             PyErr_SetString(PyExc_RuntimeError, "Failure in reading bytes from file-like object (Is it opened in binary mode?)");
             _PyErr_ChainExceptions(exc, val, tb);
+# else
+            PyErr_SetString(PyExc_RuntimeError, "Failure in reading bytes from file-like object (Is it opened in binary mode?)");
+# endif
 
             Py_DECREF(o_read);
             Py_DECREF(result_bytes);

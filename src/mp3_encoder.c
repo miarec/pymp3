@@ -374,11 +374,15 @@ static PyObject* Encoder_write(EncoderObject* self, PyObject* args)
     PyObject * o_write = PyObject_CallMethod(self->fobject, "write", "y#", outputBuffer, outputBytes);
     if (o_write == NULL) {
 
+# if 0 // Unfortunately, _PyErr_ChainExceptions() is not supported in PyPy interpreter
         // Chain the previous exception to a new exception RuntimeError
         PyObject *exc, *val, *tb;
         PyErr_Fetch(&exc, &val, &tb);
         PyErr_Format(PyExc_RuntimeError, "Failure in calling write() method of the file-like object (%d bytes)", outputBytes);
         _PyErr_ChainExceptions(exc, val, tb);
+# else
+        PyErr_Format(PyExc_RuntimeError, "Failure in calling write() method of the file-like object (%d bytes)", outputBytes);
+# endif
 
         free(outputBuffer);
         return NULL;
@@ -416,11 +420,15 @@ static PyObject* Encoder_flush(EncoderObject* self, PyObject* args)
             PyObject * o_write = PyObject_CallMethod(self->fobject, "write", "y#", outputBuffer, outputBytes);
             if (o_write == NULL) {
 
+# if 0 // Unfortunately, _PyErr_ChainExceptions() is not supported in PyPy interpreter
                 // Chain the previous exception to a new exception RuntimeError
                 PyObject *exc, *val, *tb;
                 PyErr_Fetch(&exc, &val, &tb);
                 PyErr_Format(PyExc_RuntimeError, "Failure in calling write() method of the file-like object (%d bytes)", outputBytes);
                 _PyErr_ChainExceptions(exc, val, tb);
+# else
+                PyErr_Format(PyExc_RuntimeError, "Failure in calling write() method of the file-like object (%d bytes)", outputBytes);
+# endif
 
                 free(outputBuffer);
                 return NULL;
