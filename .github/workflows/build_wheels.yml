@@ -10,7 +10,7 @@ jobs:
 
   test:
     name: Build and Test (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
@@ -52,7 +52,7 @@ jobs:
   publish-test-results:
     name: Publish Unit Tests Results
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     if: always()
 
     steps:
