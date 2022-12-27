@@ -1,4 +1,4 @@
-pymp3 - Read and write MP3 files
+mp3 - Read and write MP3 files
 ===============================================================
 
 # Introduction

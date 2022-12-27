@@ -9,6 +9,12 @@ from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 
 
+# read the contents of the README file
+from pathlib import Path
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
+
+
 # Command line flags forwarded to CMake (for debug purpose)
 cmake_cmd_args = []
 for f in sys.argv:
@@ -103,7 +109,9 @@ class CMakeBuild(build_ext):
 
 setup(
     name='mp3',
-    description='MP3 Encoder/Decoder based on MAD and LAME libraries.',
+    description='Read and write MP3 files.',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     author='Gennadiy Bezkorovayniy',
     author_email='gb@miarec.com',
     url='https://github.com/miarec/pymp3',
