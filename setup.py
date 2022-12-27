@@ -108,7 +108,7 @@ class CMakeBuild(build_ext):
 
 
 setup(
-    name='mp3',
+    name='pymp3',
     description='Read and write MP3 files.',
     long_description=long_description,
     long_description_content_type='text/markdown',
