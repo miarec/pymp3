@@ -119,8 +119,17 @@ setup(
     ext_modules=[CMakeExtension('mp3')],
     cmdclass={'build_ext': CMakeBuild},
     zip_safe=False,
+    python_requires='>=3.6'
     setup_requires=['setuptools-git-versioning<2'],
     setuptools_git_versioning={
         "enabled": True,
     },
+    classifiers=[
+        'Topic :: Multimedia :: Sound/Audio :: Conversion',
+        'Programming Language :: Python :: 3 :: Only',
+        'License :: OSI Approved :: GNU General Public License v2 (GPLv2)',
+        # 'Operating System :: MacOS :: MacOS X',
+        'Operating System :: Microsoft :: Windows',
+        'Operating System :: POSIX :: Linux'
+    ]
 )
