@@ -41,7 +41,7 @@ jobs:
           mkdir test-reports
           pytest --durations=50 --junitxml=pytest.xml tests
 
-      - name: Upload Unit Test Results (Python {{ matrix.python-version}})
+      - name: Upload Unit Test Results (Python ${{ matrix.python-version}})
         if: always()
         uses: actions/upload-artifact@v2
         with:
