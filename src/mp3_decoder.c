@@ -2,6 +2,7 @@
 #include "py_module.h"
 
 #define ERROR_MSG_SIZE 512
+#define MAX_READ_BYTES 256*1024*1024    // 256MB maximum supported size of one read operation
 
 
 static PyMethodDef Decoder_methods[] = {
@@ -218,7 +219,7 @@ static PyObject* Decoder_read(DecoderObject* self, PyObject* args)
     // An empty bytestring as a result from this function
     PyObject * result_bytes = Py_BuildValue("y", "");
 
-    int remaining_read_size = 256*1024*1024;    // 256MB maximum supported size of one read operation
+    int remaining_read_size = -1;    // 256MB maximum supported size of one read operation
 
     int unrecoverable_error = 0;
     char errmsg[ERROR_MSG_SIZE];
@@ -228,8 +229,12 @@ static PyObject* Decoder_read(DecoderObject* self, PyObject* args)
         PyErr_SetString(PyExc_ValueError, "A size argument is required to read() method");
         return NULL;
     }
-
-    if (remaining_read_size < 0)
+    
+    if (remaining_read_size == -1 || remaining_read_size > MAX_READ_BYTES)
+    {
+        remaining_read_size = MAX_READ_BYTES;
+    }
+    else if (remaining_read_size < 0)
     {
         PyErr_SetString(PyExc_ValueError, "A size argument cannot be negative");
         return NULL;
