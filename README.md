@@ -15,7 +15,7 @@ Using pip
 
 Install from source code:
 
-    git clone <this repo>
+    git clone https://github.com/miarec/pymp3
     cd pymp3
     pip install .
 
@@ -208,7 +208,7 @@ Add `--config=Release` to build command to choose Release configuration:
 By default, this project will download lame and mad libraries from github and compile them in-place.
 If you want to use the system-installed lame/mad, then pass the following parameters to cmake command:
 
-    -DPYMP3_USE_SYSTEM_LIBMAD=ON -DPYMP3_USE_SYSTEM_LAME
+    -DPYMP3_USE_SYSTEM_LIBMAD=ON -DPYMP3_USE_SYSTEM_LAME=ON
 
 TODO:
 
