@@ -7,7 +7,8 @@ on:
     branches:
       - master
   pull_request:
-
+  workflow_dispatch:
+  
 jobs:
 
   test:
@@ -93,8 +94,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # os: [ubuntu-20.04, windows-2019, macos-11]
-        os: [ubuntu-20.04, windows-2019]
+        os: [ubuntu-20.04, windows-2019, macos-11]
 
     steps:
       - uses: actions/checkout@v3
@@ -116,6 +116,7 @@ jobs:
           path: ./wheelhouse/*.whl
 
   publish_pypi:
+    name: Deploy (PyPI)
     needs: [build_wheels, make_sdist]
     runs-on: ubuntu-20.04
     if: startsWith(github.ref, 'refs/tags')
@@ -134,4 +135,5 @@ jobs:
     - name: Publish distribution to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
+        user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
