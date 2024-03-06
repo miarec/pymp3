@@ -72,7 +72,6 @@ jobs:
   make_sdist:
     name: Make SDist
     needs: test
-    if: startsWith(github.ref, 'refs/tags')
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v3
@@ -129,6 +128,7 @@ jobs:
     - name: Publish distribution to Test PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
+        user: __token__
         password: ${{ secrets.TEST_PYPI_API_TOKEN }}
         repository_url: https://test.pypi.org/legacy/
 
@@ -137,3 +137,21 @@ jobs:
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
+
+  release:
+    name: Release
+    needs: [build_wheels, make_sdist]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags')
+    steps:
+
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        # Fetch all tags (required for the version build)
+        fetch-depth: 0
+
+    - name: Release a Changelog
+      uses: rasmus-saks/release-a-changelog-action@v1.0.1
+      with:
+        github-token: '${{ secrets.GITHUB_TOKEN }}'
