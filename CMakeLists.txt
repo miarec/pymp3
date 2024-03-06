@@ -29,7 +29,7 @@ find_package (Python3
     COMPONENTS Interpreter Development.Module
     REQUIRED
 )
-message(STATUS "Found Python ${Python3_VERSION} at ${Python3_EXECUTABLE} (include_dirs=${Python3_INCLUDE_DIRS})")
+message(STATUS "Found Python ${Python3_VERSION} at ${Python3_EXECUTABLE}")
 
 # ---------------------------------------------------------------
 # Define library (python extension) "pymp3.[so|pyd]"
@@ -51,12 +51,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     LINKER_LANGUAGE C
 )
 
-
-# Tell the compiler/linker where to find Python.h and library files
-set_target_properties(${PROJECT_NAME} PROPERTIES 
-    INCLUDE_DIRECTORIES "${Python3_INCLUDE_DIRS}"
-    LINK_DIRECTORIES "${Python3_LIBRARY_DIRS}"
-)
+target_link_libraries(${PROJECT_NAME} PRIVATE Python3::Module)
 
 target_compile_options(${PROJECT_NAME}
     PRIVATE

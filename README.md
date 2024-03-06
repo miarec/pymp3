@@ -213,4 +213,3 @@ If you want to use the system-installed lame/mad, then pass the following parame
 TODO:
 
   - Allow user to define PYMP3_USE_SYSTEM_LIBMAD/LAME via environment variables, read them in setup.py and pass to cmake
-  - Make it compile on Mac OSX
